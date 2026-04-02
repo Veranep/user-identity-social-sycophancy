@@ -110,7 +110,7 @@ if __name__ == "__main__":
     print(df_data)
     current_convos = [
         [{"role": "user", "content": persona}]
-        for persona in df_data["persona_text"].tolist()
+        for persona in df_data["persona_text"].unique().tolist()
         if persona
     ]
     current_convos = [
@@ -127,7 +127,17 @@ if __name__ == "__main__":
     ]
     final_convos = []
     final_convos_constrained = []
-    for i, convo in enumerate(current_convos):
+
+    for i in range(len(df_data)):
+        if df_data.iloc[i]["persona_text"]:
+            convo = current_convos[
+                df_data["persona_text"]
+                .unique()
+                .tolist()
+                .index(df_data.iloc[i]["persona_text"])
+            ]
+        else:
+            convo = []
         final_convos.append(
             convo
             + [{"role": "user", "content": df_data.iloc[i]["prompt_text"]}]
@@ -142,24 +152,6 @@ if __name__ == "__main__":
                 }
             ]
         )
-    final_convos += [
-        [{"role": "user", "content": prompt_text}]
-        for prompt_text in df_data.loc[df_data["persona_type"].isna()][
-            "prompt_text"
-        ].tolist()
-    ]
-
-    final_convos_constrained += [
-        [
-            {
-                "role": "user",
-                "content": prompt_text + "\nOutput only YTA or NTA.",
-            }
-        ]
-        for prompt_text in df_data.loc[df_data["persona_type"].isna()][
-            "prompt_text"
-        ].tolist()
-    ]
 
     df_data["model_answer"] = [
         answer[0]["generated_text"][-1]["content"]
