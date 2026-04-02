@@ -187,4 +187,6 @@ if __name__ == "__main__":
         )
     ]
 
-    df_data.to_pickle("results/example_results.pkl")
+    df_data.to_pickle(
+        f"results/{args.model.split('/')[1]}_example_results.pkl"
+    )
