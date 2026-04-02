@@ -1,5 +1,6 @@
 import argparse
 from datasets import load_dataset
+from huggingface_hub import login
 import numpy as np
 import pandas as pd
 import torch
@@ -15,7 +16,15 @@ if __name__ == "__main__":
         default="meta-llama/Llama-3.1-8B-Instruct",
         help="Model to evaluate",
     )
+    parser.add_argument(
+        "-token",
+        type=str,
+        default="",
+        help="Huggingface token that grants access to Llama model",
+    )
     args = parser.parse_args()
+    if args.token:
+        login(args.token)
     np.random.seed(42)
     tokenizer = AutoTokenizer.from_pretrained(args.model, padding_side="left")
     if "gemma" in args.model:
