@@ -83,7 +83,7 @@ if __name__ == "__main__":
                     data["prompt_type"].append(prompt_type)
                     data["prompt_id"].append(df.iloc[i]["id"])
                     data["prompt_text"].append(
-                        df.iloc[i][prompt_type].strip().split("STORY: ")[1]
+                        df.iloc[i][prompt_type].strip().split("STORY: ")[-1]
                     )
                 data["persona_type"].append("both")
                 data["persona_id"].append(df_personas.iloc[j]["uuid"])
@@ -95,7 +95,7 @@ if __name__ == "__main__":
                 data["prompt_type"].append(prompt_type)
                 data["prompt_id"].append(df.iloc[i]["id"])
                 data["prompt_text"].append(
-                    df.iloc[i][prompt_type].strip().split("STORY: ")[1]
+                    df.iloc[i][prompt_type].strip().split("STORY: ")[-1]
                 )
                 data["persona_type"].append(None)
                 data["persona_id"].append(None)
