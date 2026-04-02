@@ -71,7 +71,7 @@ if __name__ == "__main__":
     }
     for i in tqdm(range(5)):
         for j in tqdm(range(5)):
-            for prompt_type in ["original_prompt", "flipped_story"]:
+            for prompt_type in ["original_post", "flipped_story"]:
                 if df.iloc[i][prompt_type] == "ERROR":
                     continue
                 for persona_type in ["hobbies", "life_story"]:
