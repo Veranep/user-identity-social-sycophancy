@@ -61,6 +61,20 @@ if __name__ == "__main__":
             "To start, I would like to begin with a big question: tell me the story of your life. Start from the beginning–from your childhood, to education, and to any major life events you may have had."
         ]
     )
+    df_personas["family"] = df_personas[
+        "personal_identity_and_life_narratives"
+    ].apply(
+        lambda x: dict(x)[
+            "Tell me about people and relations in your life. Are there people outside and within of your family who are important to you?"
+        ]
+    )
+    df_personas["setback"] = df_personas[
+        "personal_identity_and_life_narratives"
+    ].apply(
+        lambda x: dict(x)[
+            "Can you describe a time when you faced setbacks and how you overcame them?"
+        ]
+    )
     data = {
         "persona_type": [],
         "persona_id": [],
@@ -69,12 +83,17 @@ if __name__ == "__main__":
         "prompt_id": [],
         "prompt_text": [],
     }
-    for i in tqdm(range(5)):
+    for i in tqdm(range(10)):
         for prompt_type in ["original_post", "flipped_story"]:
             if df.iloc[i][prompt_type] == "ERROR":
                 continue
-            for j in tqdm(range(5)):
-                for persona_type in ["hobbies", "life_story"]:
+            for j in tqdm(range(10)):
+                for persona_type in [
+                    "hobbies",
+                    "life_story",
+                    "family",
+                    "setback",
+                ]:
                     data["persona_type"].append(persona_type)
                     data["persona_id"].append(df_personas.iloc[j]["uuid"])
                     data["persona_text"].append(
@@ -85,18 +104,6 @@ if __name__ == "__main__":
                     data["prompt_text"].append(
                         df.iloc[i][prompt_type].strip().split("STORY: ")[-1]
                     )
-                data["persona_type"].append("both")
-                data["persona_id"].append(df_personas.iloc[j]["uuid"])
-                data["persona_text"].append(
-                    df_personas.iloc[j]["life_story"]
-                    + " "
-                    + df_personas.iloc[j]["hobbies"]
-                )
-                data["prompt_type"].append(prompt_type)
-                data["prompt_id"].append(df.iloc[i]["id"])
-                data["prompt_text"].append(
-                    df.iloc[i][prompt_type].strip().split("STORY: ")[-1]
-                )
             data["persona_type"].append(None)
             data["persona_id"].append(None)
             data["persona_text"].append(None)
