@@ -118,7 +118,7 @@ if __name__ == "__main__":
         for convo in tqdm(
             model(
                 current_convos,
-                batch_size=batch_size,
+                batch_size=32,
                 do_sample=False,
                 max_new_tokens=500,
             ),
