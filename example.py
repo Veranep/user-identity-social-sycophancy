@@ -70,10 +70,10 @@ if __name__ == "__main__":
         "prompt_text": [],
     }
     for i in tqdm(range(5)):
-        for j in tqdm(range(5)):
-            for prompt_type in ["original_post", "flipped_story"]:
-                if df.iloc[i][prompt_type] == "ERROR":
-                    continue
+        for prompt_type in ["original_post", "flipped_story"]:
+            if df.iloc[i][prompt_type] == "ERROR":
+                continue
+            for j in tqdm(range(5)):
                 for persona_type in ["hobbies", "life_story"]:
                     data["persona_type"].append(persona_type)
                     data["persona_id"].append(df_personas.iloc[j]["uuid"])
@@ -97,14 +97,14 @@ if __name__ == "__main__":
                 data["prompt_text"].append(
                     df.iloc[i][prompt_type].strip().split("STORY: ")[-1]
                 )
-                data["persona_type"].append(None)
-                data["persona_id"].append(None)
-                data["persona_text"].append(None)
-                data["prompt_type"].append(prompt_type)
-                data["prompt_id"].append(df.iloc[i]["id"])
-                data["prompt_text"].append(
-                    df.iloc[i][prompt_type].strip().split("STORY: ")[1]
-                )
+            data["persona_type"].append(None)
+            data["persona_id"].append(None)
+            data["persona_text"].append(None)
+            data["prompt_type"].append(prompt_type)
+            data["prompt_id"].append(df.iloc[i]["id"])
+            data["prompt_text"].append(
+                df.iloc[i][prompt_type].strip().split("STORY: ")[-1]
+            )
 
     df_data = pd.DataFrame(data)
     print(df_data)
