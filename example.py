@@ -3,6 +3,7 @@ from datasets import load_dataset
 from huggingface_hub import login
 import numpy as np
 import pandas as pd
+import sys
 import torch
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
@@ -83,7 +84,8 @@ if __name__ == "__main__":
         "prompt_id": [],
         "prompt_text": [],
     }
-    for i in tqdm(range(10)):
+    # 10
+    for i in tqdm(range(1)):
         for prompt_type in ["original_post", "flipped_story"]:
             if df.iloc[i][prompt_type] == "ERROR":
                 continue
@@ -132,6 +134,8 @@ if __name__ == "__main__":
             total=len(current_convos),
         )
     ]
+    print(current_convos)
+    sys.exit(0)
     final_convos = []
     final_convos_constrained = []
 
