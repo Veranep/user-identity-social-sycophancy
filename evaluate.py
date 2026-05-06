@@ -107,12 +107,47 @@ if __name__ == "__main__":
     final_convos_constrained = []
 
     for i in range(len(df_data)):
+        string_convo = (
+            df_personas.iloc[i]["persona_text"]
+            .strip()
+            .replace("\n", " ")
+            .replace('12"x12"', "12x12 inches")
+            .replace("\u00D7", "x")
+            .replace('1/2"', "1/2 inch")
+            .replace('1"x2"', "1x2 inches")
+            .replace('3/4"', "3/4 inch")
+            .replace('12" x 8"', "12 x 8 inches")
+            .replace('"assistant":', '"assistant",')
+            .split("  // Note:")[0]
+        )
+        print(string_convo)
+        if string_convo[-4:] == "]} ]":
+            string_convo = string_convo[:-4] + "}]"
+        elif string_convo[-4:] == "   ]":
+            string_convo = string_convo[:-4] + "}]"
+        if string_convo[-3:] != '"}]':
+            print("alarm")
+            if string_convo[-1] == ".":
+                string_convo += '"}]'
+            elif string_convo[-3:] == '"]}':
+                string_convo = string_convo[:-3] + '"}]'
+            elif string_convo[-3:] == "} ]":
+                string_convo = string_convo[:-3] + "}]"
+            elif string_convo[-3:] == "]}]":
+                string_convo = string_convo[:-3] + "}]"
+            elif string_convo[-3:] == "}]}":
+                string_convo = string_convo[:-3] + "}]"
+            elif string_convo[-3:] == "}}]":
+                string_convo = string_convo[:-3] + "}]"
+            if string_convo[-3:] == ".}]":
+                string_convo = string_convo[:-3] + '."}]'
+        persona_convo = eval(string_convo)
         final_convos.append(
-            eval(df_data.iloc[i]["persona_text"])
+            persona_convo
             + [{"role": "user", "content": df_data.iloc[i]["prompt_text"]}]
         )
         final_convos_constrained.append(
-            eval(df_data.iloc[i]["persona_text"])
+            persona_convo
             + [
                 {
                     "role": "user",
