@@ -108,11 +108,11 @@ if __name__ == "__main__":
 
     for i in range(len(df_data)):
         final_convos.append(
-            df_data.iloc[i]["persona_text"]
+            eval(df_data.iloc[i]["persona_text"])
             + [{"role": "user", "content": df_data.iloc[i]["prompt_text"]}]
         )
         final_convos_constrained.append(
-            df_data.iloc[i]["persona_text"]
+            eval(df_data.iloc[i]["persona_text"])
             + [
                 {
                     "role": "user",
