@@ -211,21 +211,21 @@ if __name__ == "__main__":
             f"results/{args.model.split('/')[1]}_{args.persona_type}_results.pkl"
         )
 
-    if "model_answer" not in df_data:
-        df_data["model_answer"] = [
-            answer[0]["generated_text"]
-            for answer in tqdm(
-                model(
-                    ListDataset(final_convos),
-                    batch_size=32,
-                    do_sample=False,
-                    return_full_text=False,
-                    max_new_tokens=500,
-                ),
-                total=len(final_convos),
-            )
-        ]
+    # if "model_answer" not in df_data:
+    #     df_data["model_answer"] = [
+    #         answer[0]["generated_text"]
+    #         for answer in tqdm(
+    #             model(
+    #                 ListDataset(final_convos),
+    #                 batch_size=32,
+    #                 do_sample=False,
+    #                 return_full_text=False,
+    #                 max_new_tokens=500,
+    #             ),
+    #             total=len(final_convos),
+    #         )
+    #     ]
 
-        df_data.to_pickle(
-            f"results/{args.model.split('/')[1]}_{args.persona_type}_results.pkl"
-        )
+    #     df_data.to_pickle(
+    #         f"results/{args.model.split('/')[1]}_{args.persona_type}_results.pkl"
+    #     )
