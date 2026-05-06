@@ -72,7 +72,7 @@ if __name__ == "__main__":
         )
     else:
         df = pd.read_pickle("data/aita-nta-flip_rewritten_2000.gz")
-        n = 2000
+        n = 200
         df_personas = pd.read_pickle(f"data/personas_{n}_ch.gz")
         data = {
             "persona_type": [],
