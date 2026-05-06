@@ -22,6 +22,7 @@ persona_types = [
 ]
 
 if __name__ == "__main__":
+    print(torch.cuda.is_available())
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-m",
