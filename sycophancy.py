@@ -44,9 +44,7 @@ if __name__ == "__main__":
         help="Model to evaluate",
     )
     args = parser.parse_args()
-    df = pd.read_pickle(
-        f"results/{args.model.split('/')[1]}_example_results.pkl"
-    )
+    df = pd.read_pickle(f"results/{args.model.split('/')[1]}_results.pkl")
 
     df = df.pivot_table(
         ["prompt_text", "model_answer", "model_answer_constrained"],

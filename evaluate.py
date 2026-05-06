@@ -62,37 +62,45 @@ if __name__ == "__main__":
     )
     if not model.tokenizer.pad_token_id:
         model.tokenizer.pad_token_id = model.tokenizer.eos_token_id
-    df = pd.read_pickle("aita-nta-flip_rewritten_2000.gz")
-    n = 2000
-    df_personas = pd.read_pickle(f"data/personas_{n}_ch.gz")
-    data = {
-        "persona_type": [],
-        "persona_id": [],
-        "persona_text": [],
-        "prompt_type": [],
-        "prompt_id": [],
-        "prompt_text": [],
-    }
-    for i in tqdm(range(len(df))):
-        for j in tqdm(range(len(df_personas))):
+
+    if os.path.isfile(
+        f"results/{args.model.split('/')[1]}_{args.persona_type}_results.pkl"
+    ):
+        df_data = pd.read_pickle(
+            f"results/{args.model.split('/')[1]}_{args.persona_type}_results.pkl"
+        )
+    else:
+        df = pd.read_pickle("aita-nta-flip_rewritten_2000.gz")
+        n = 2000
+        df_personas = pd.read_pickle(f"data/personas_{n}_ch.gz")
+        data = {
+            "persona_type": [],
+            "persona_id": [],
+            "persona_text": [],
+            "prompt_type": [],
+            "prompt_id": [],
+            "prompt_text": [],
+        }
+        for i in tqdm(range(len(df))):
             for prompt_type in ["original_post", "flipped_story"]:
-                data["persona_type"].append(args.persona_type)
-                data["persona_id"].append(df_personas.iloc[j]["uuid"])
-                data["persona_text"].append(
-                    df_personas.iloc[j][args.persona_type]
-                )
+                for j in tqdm(range(len(df_personas))):
+                    data["persona_type"].append(args.persona_type)
+                    data["persona_id"].append(df_personas.iloc[j]["uuid"])
+                    data["persona_text"].append(
+                        df_personas.iloc[j][args.persona_type]
+                    )
+                    data["prompt_type"].append(prompt_type)
+                    data["prompt_id"].append(df.iloc[i]["id"])
+                    data["prompt_text"].append(df.iloc[i][prompt_type])
+                data["persona_type"].append(None)
+                data["persona_id"].append(None)
+                data["persona_text"].append([])
                 data["prompt_type"].append(prompt_type)
                 data["prompt_id"].append(df.iloc[i]["id"])
                 data["prompt_text"].append(df.iloc[i][prompt_type])
-            data["persona_type"].append(None)
-            data["persona_id"].append(None)
-            data["persona_text"].append([])
-            data["prompt_type"].append(prompt_type)
-            data["prompt_id"].append(df.iloc[i]["id"])
-            data["prompt_text"].append(df.iloc[i][prompt_type])
 
-    df_data = pd.DataFrame(data)
-    print(df_data)
+        df_data = pd.DataFrame(data)
+        print(df_data)
 
     final_convos = []
     final_convos_constrained = []
@@ -113,30 +121,38 @@ if __name__ == "__main__":
             ]
         )
 
-    df_data["model_answer"] = [
-        answer[0]["generated_text"][-1]["content"]
-        for answer in tqdm(
-            model(
-                final_convos,
-                batch_size=32,
-                do_sample=False,
-                max_new_tokens=500,
-            ),
-            total=len(final_convos),
-        )
-    ]
+    if "model_answer_constrained" not in df_data:
+        df_data["model_answer_constrained"] = [
+            answer[0]["generated_text"][-1]["content"]
+            for answer in tqdm(
+                model(
+                    final_convos_constrained,
+                    batch_size=32,
+                    do_sample=False,
+                    max_new_tokens=1,
+                ),
+                total=len(final_convos_constrained),
+            )
+        ]
 
-    df_data["model_answer_constrained"] = [
-        answer[0]["generated_text"][-1]["content"]
-        for answer in tqdm(
-            model(
-                final_convos_constrained,
-                batch_size=32,
-                do_sample=False,
-                max_new_tokens=1,
-            ),
-            total=len(final_convos_constrained),
+        df_data.to_pickle(
+            f"results/{args.model.split('/')[1]}_{args.persona_type}_results.pkl"
         )
-    ]
 
-    df_data.to_pickle(f"results/{args.model.split('/')[1]}_results.pkl")
+    if "model_answer" not in df_data:
+        df_data["model_answer"] = [
+            answer[0]["generated_text"][-1]["content"]
+            for answer in tqdm(
+                model(
+                    final_convos,
+                    batch_size=32,
+                    do_sample=False,
+                    max_new_tokens=500,
+                ),
+                total=len(final_convos),
+            )
+        ]
+
+        df_data.to_pickle(
+            f"results/{args.model.split('/')[1]}_{args.persona_type}_results.pkl"
+        )

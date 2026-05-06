@@ -44,15 +44,13 @@ if __name__ == "__main__":
         "neutral": [],
     }
     if os.path.isfile(
-        f"results/{args.model.split('/')[1]}_example_results_emotions.pkl"
+        f"results/{args.model.split('/')[1]}_results_emotions.pkl"
     ):
         df = pd.read_pickle(
-            f"results/{args.model.split('/')[1]}_example_results_emotions.pkl"
+            f"results/{args.model.split('/')[1]}_results_emotions.pkl"
         )
     else:
-        df = pd.read_pickle(
-            f"results/{args.model.split('/')[1]}_example_results.pkl"
-        )
+        df = pd.read_pickle(f"results/{args.model.split('/')[1]}_results.pkl")
         emotion_classifier = pipeline(
             task="text-classification",
             model="AnasAlokla/multilingual_go_emotions_V1.2",
@@ -67,7 +65,7 @@ if __name__ == "__main__":
         df_emotions = pd.DataFrame(emotions)
         df = pd.concat([df, df_emotions], axis=1)
         df.to_pickle(
-            f"results/{args.model.split('/')[1]}_example_results_emotions.pkl"
+            f"results/{args.model.split('/')[1]}_results_emotions.pkl"
         )
 
     for emotion in list(emotions.keys()):
