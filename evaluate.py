@@ -140,6 +140,18 @@ if __name__ == "__main__":
             if string_convo[-3:] == ".}]":
                 string_convo = string_convo[:-3] + '."}]'
         persona_convo = eval(string_convo)
+        for t in range(len(persona_convo)):
+            if (
+                len(persona_convo) > 2
+                and persona_convo[t]["role"] == "assistant"
+                and persona_convo[t - 1]["role"] == "assistant"
+            ):
+                persona_convo[t - 1]["content"] = (
+                    persona_convo[t - 1]["content"]
+                    + " "
+                    + persona_convo[t]["content"]
+                )
+                del persona_convo[t]
         final_convos.append(
             persona_convo
             + [{"role": "user", "content": df_data.iloc[i]["prompt_text"]}]
