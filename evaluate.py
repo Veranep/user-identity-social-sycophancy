@@ -71,7 +71,7 @@ if __name__ == "__main__":
             f"results/{args.model.split('/')[1]}_{args.persona_type}_results.pkl"
         )
     else:
-        df = pd.read_pickle("aita-nta-flip_rewritten_2000.gz")
+        df = pd.read_pickle("data/aita-nta-flip_rewritten_2000.gz")
         n = 2000
         df_personas = pd.read_pickle(f"data/personas_{n}_ch.gz")
         data = {
