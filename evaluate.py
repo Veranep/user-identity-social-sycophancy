@@ -108,7 +108,7 @@ if __name__ == "__main__":
 
     for i in range(len(df_data)):
         string_convo = (
-            df_personas.iloc[i]["persona_text"]
+            df_data.iloc[i]["persona_text"]
             .strip()
             .replace("\n", " ")
             .replace('12"x12"', "12x12 inches")
