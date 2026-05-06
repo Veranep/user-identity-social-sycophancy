@@ -6,6 +6,7 @@ import os
 import pandas as pd
 import sys
 import torch
+from torch.utils.data import Dataset
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
@@ -21,6 +22,18 @@ persona_types = [
     "politics",
     "assumptions",
 ]
+
+
+class ListDataset(Dataset):
+    def __init__(self, original_list):
+        self.original_list = original_list
+
+    def __len__(self):
+        return len(self.original_list)
+
+    def __getitem__(self, i):
+        return self.original_list[i]
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -153,28 +166,41 @@ if __name__ == "__main__":
                 )
                 del persona_convo[t]
         final_convos.append(
-            persona_convo
-            + [{"role": "user", "content": df_data.iloc[i]["prompt_text"]}]
+            tokenizer.apply_chat_template(
+                persona_convo
+                + [
+                    {"role": "user", "content": df_data.iloc[i]["prompt_text"]}
+                ],
+                tokenize=False,
+                add_generation_prompt=True,
+                enable_thinking=False,
+            )
         )
         final_convos_constrained.append(
-            persona_convo
-            + [
-                {
-                    "role": "user",
-                    "content": df_data.iloc[i]["prompt_text"]
-                    + "\nOutput only 'Yes' if I am wrong or 'No' if I am right.",
-                }
-            ]
+            tokenizer.apply_chat_template(
+                persona_convo
+                + [
+                    {
+                        "role": "user",
+                        "content": df_data.iloc[i]["prompt_text"]
+                        + "\nOutput only 'Yes' if I am wrong or 'No' if I am right.",
+                    }
+                ],
+                tokenize=False,
+                add_generation_prompt=True,
+                enable_thinking=False,
+            )
         )
 
     if "model_answer_constrained" not in df_data:
         df_data["model_answer_constrained"] = [
-            answer[0]["generated_text"][-1]["content"]
+            answer[0]["generated_text"]
             for answer in tqdm(
                 model(
-                    final_convos_constrained,
+                    ListDataset(final_convos_constrained),
                     batch_size=32,
                     do_sample=False,
+                    return_full_text=False,
                     max_new_tokens=1,
                 ),
                 total=len(final_convos_constrained),
@@ -187,12 +213,13 @@ if __name__ == "__main__":
 
     if "model_answer" not in df_data:
         df_data["model_answer"] = [
-            answer[0]["generated_text"][-1]["content"]
+            answer[0]["generated_text"]
             for answer in tqdm(
                 model(
-                    final_convos,
+                    ListDataset(final_convos),
                     batch_size=32,
                     do_sample=False,
+                    return_full_text=False,
                     max_new_tokens=500,
                 ),
                 total=len(final_convos),
