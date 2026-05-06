@@ -2,6 +2,7 @@ import argparse
 from datasets import load_dataset
 from huggingface_hub import login
 import numpy as np
+import os
 import pandas as pd
 import sys
 import torch
@@ -22,7 +23,6 @@ persona_types = [
 ]
 
 if __name__ == "__main__":
-    print(torch.cuda.is_available())
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-m",
