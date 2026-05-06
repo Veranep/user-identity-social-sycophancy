@@ -198,7 +198,7 @@ if __name__ == "__main__":
             for answer in tqdm(
                 model(
                     ListDataset(final_convos_constrained),
-                    batch_size=32,
+                    batch_size=64,
                     do_sample=False,
                     return_full_text=False,
                     max_new_tokens=1,
@@ -217,7 +217,7 @@ if __name__ == "__main__":
             for answer in tqdm(
                 model(
                     ListDataset(final_convos),
-                    batch_size=32,
+                    batch_size=64,
                     do_sample=False,
                     return_full_text=False,
                     max_new_tokens=500,
