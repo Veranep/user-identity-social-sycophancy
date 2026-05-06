@@ -95,7 +95,7 @@ if __name__ == "__main__":
                     data["prompt_text"].append(df.iloc[i][prompt_type])
                 data["persona_type"].append(None)
                 data["persona_id"].append(None)
-                data["persona_text"].append([])
+                data["persona_text"].append("[]")
                 data["prompt_type"].append(prompt_type)
                 data["prompt_id"].append(df.iloc[i]["id"])
                 data["prompt_text"].append(df.iloc[i][prompt_type])
@@ -120,13 +120,11 @@ if __name__ == "__main__":
             .replace('"assistant":', '"assistant",')
             .split("  // Note:")[0]
         )
-        print(string_convo)
         if string_convo[-4:] == "]} ]":
             string_convo = string_convo[:-4] + "}]"
         elif string_convo[-4:] == "   ]":
             string_convo = string_convo[:-4] + "}]"
         if string_convo[-3:] != '"}]':
-            print("alarm")
             if string_convo[-1] == ".":
                 string_convo += '"}]'
             elif string_convo[-3:] == '"]}':
