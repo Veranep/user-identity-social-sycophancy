@@ -81,6 +81,8 @@ if __name__ == "__main__":
         model.tokenizer.pad_token_id = model.tokenizer.eos_token_id
 
     df = pd.read_pickle("data/aita-nta-flip_rewritten_2000.gz")
+    if args.long:
+        df = df.iloc[:100]
     n = 200
     df_personas = pd.read_pickle(f"data/personas_{n}_ch.gz")
     data = {
