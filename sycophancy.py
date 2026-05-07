@@ -52,10 +52,10 @@ if __name__ == "__main__":
     for persona_type in persona_types:
         df_pt = pd.read_pickle(
             f"results/{args.model.split('/')[-1]}_{persona_type}_results.pkl"
-        )
+        ).drop(columns="prompt_text")
 
         df_pt = df.pivot_table(
-            ["prompt_text", "model_answer_constrained"],
+            ["model_answer_constrained"],
             [
                 "persona_type",
                 "persona_id",
