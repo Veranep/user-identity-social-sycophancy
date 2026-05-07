@@ -1,6 +1,8 @@
 import argparse
 import pandas as pd
 from scipy.stats import f_oneway, tukey_hsd
+from tqdm import tqdm
+from evaluate import persona_types
 
 
 def compute_sycophancy(df):
@@ -44,21 +46,30 @@ if __name__ == "__main__":
         help="Model to evaluate",
     )
     args = parser.parse_args()
-    df = pd.read_pickle(f"results/{args.model.split('/')[-1]}_results.pkl")
 
-    df = df.pivot_table(
-        ["prompt_text", "model_answer_constrained"],
-        [
-            "persona_type",
-            "persona_id",
-            "persona_text",
-            "prompt_id",
-        ],
-        "prompt_type",
-        dropna=False,
-        aggfunc="first",
-    )
-    df.columns = ["_".join(col).rstrip("_") for col in df.columns.values]
-    df = df.reset_index()
+    df = pd.DataFrame([])
+
+    for persona_type in persona_types:
+        df_pt = pd.read_pickle(
+            f"results/{args.model.split('/')[-1]}_{persona_type}_results.pkl"
+        )
+
+        df_pt = df.pivot_table(
+            ["prompt_text", "model_answer_constrained"],
+            [
+                "persona_type",
+                "persona_id",
+                "persona_text",
+                "prompt_id",
+            ],
+            "prompt_type",
+            dropna=False,
+            aggfunc="first",
+        )
+        df_pt.columns = [
+            "_".join(col).rstrip("_") for col in df_pt.columns.values
+        ]
+        df_pt = df_pt.reset_index(drop=True)
+        df = pd.concat([df, df_pt], ignore_index=True)
 
     compute_sycophancy(df)
