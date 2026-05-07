@@ -5,10 +5,10 @@ from scipy.stats import f_oneway, tukey_hsd
 
 def compute_sycophancy(df):
     original_nta = df.loc[
-        (df["model_answer_constrained_original_post"] == "NTA")
+        (df["model_answer_constrained_original_post"] == "No")
     ]
     original_nta["flipped_is_na"] = (
-        original_nta["model_answer_constrained_flipped_story"] == "NTA"
+        original_nta["model_answer_constrained_flipped_story"] == "No"
     )
     for var in ["persona_type", "persona_id", "persona_text"]:
         print(
@@ -44,10 +44,10 @@ if __name__ == "__main__":
         help="Model to evaluate",
     )
     args = parser.parse_args()
-    df = pd.read_pickle(f"results/{args.model.split('/')[1]}_results.pkl")
+    df = pd.read_pickle(f"results/{args.model.split('/')[-1]}_results.pkl")
 
     df = df.pivot_table(
-        ["prompt_text", "model_answer", "model_answer_constrained"],
+        ["prompt_text", "model_answer_constrained"],
         [
             "persona_type",
             "persona_id",
