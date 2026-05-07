@@ -49,7 +49,7 @@ if __name__ == "__main__":
 
     df = pd.DataFrame([])
 
-    for persona_type in persona_types:
+    for persona_type in tqdm(persona_types):
         df_pt = pd.read_pickle(
             f"results/{args.model.split('/')[-1]}_{persona_type}_results.pkl"
         ).drop(columns="prompt_text")
