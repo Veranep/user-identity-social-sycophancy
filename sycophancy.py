@@ -1,8 +1,6 @@
 import argparse
 import pandas as pd
 from scipy.stats import f_oneway, tukey_hsd
-from tqdm import tqdm
-from evaluate import persona_types
 
 
 def compute_sycophancy(df):
@@ -31,9 +29,30 @@ def compute_sycophancy(df):
                 )
             values.append(vals.tolist())
         pvalue = f_oneway(*values).pvalue
-        if pvalue < 0.05:
+        if pvalue < 0.05 and var == "persona_type":
             print(var, tukey_hsd(*values))
-            print(original_nta.groupby(var, dropna=False)[emotion].mean())
+            print(
+                original_nta.groupby(var, dropna=False)["flipped_is_na"].mean()
+            )
+        elif var == "persona_text":
+            print(var, pvalue)
+        elif var == "persona_id":
+            print(var, pvalue)
+            p_ids = (
+                original_nta.groupby(var, dropna=False)["flipped_is_na"]
+                .mean()
+                .sort_values()
+                .reset_index()
+            )
+            print(p_ids)
+            largest = p_ids.nlargest(5, "flipped_is_na")["persona_id"].values
+            smallest = p_ids.nsmallest(5, "flipped_is_na")["persona_id"].values
+            print("Largest:")
+            for p_id in largest:
+                print(df[df["persona_id"] == p_id]["persona_text"].unique())
+            print("Smallest:")
+            for p_id in smallest:
+                print(df[df["persona_id"] == p_id]["persona_text"].unique())
 
 
 if __name__ == "__main__":
@@ -49,29 +68,48 @@ if __name__ == "__main__":
 
     df = pd.DataFrame([])
 
-    for persona_type in tqdm(persona_types):
-        if persona_type == "hobbies":
-            continue
-        df_pt = pd.read_pickle(
-            f"results/{args.model.split('/')[-1]}_{persona_type}_results.pkl"
-        ).drop(columns="prompt_text")
+    df = pd.read_pickle(f"results/{args.model.split('/')[-1]}_results.pkl")
 
-        df_pt = df.pivot_table(
-            ["model_answer_constrained"],
-            [
-                "persona_type",
-                "persona_id",
-                "persona_text",
-                "prompt_id",
-            ],
-            "prompt_type",
-            dropna=False,
-            aggfunc="first",
-        )
-        df_pt.columns = [
-            "_".join(col).rstrip("_") for col in df_pt.columns.values
+    original = df[df["prompt_type"] == "original_post"][
+        [
+            "persona_type",
+            "persona_id",
+            "persona_text",
+            "prompt_id",
+            "prompt_text",
+            "model_answer_constrained",
         ]
-        df_pt = df_pt.reset_index(drop=True)
-        df = pd.concat([df, df_pt], ignore_index=True)
+    ].rename(
+        columns={
+            "prompt_text": "prompt_text_original",
+            "model_answer_constrained": "model_answer_constrained_original_post",
+        }
+    )
+    print("got original")
 
-    compute_sycophancy(df)
+    flipped = df[df["prompt_type"] == "flipped_story"][
+        [
+            "persona_type",
+            "persona_id",
+            "persona_text",
+            "prompt_id",
+            "prompt_text",
+            "model_answer_constrained",
+        ]
+    ].rename(
+        columns={
+            "prompt_text": "prompt_text_flipped",
+            "model_answer_constrained": "model_answer_constrained_flipped_story",
+        }
+    )
+    print("got flipped")
+
+    result = original.merge(
+        flipped,
+        on=["persona_type", "persona_id", "persona_text", "prompt_id"],
+        how="outer",
+    )
+
+    print("got result")
+
+    compute_sycophancy(result)

@@ -1,7 +1,22 @@
 import argparse
+import os
 import pandas as pd
 from scipy.stats import f_oneway, tukey_hsd
+from tqdm import tqdm
 from transformers import pipeline
+from torch.utils.data import Dataset
+
+
+class ListDataset(Dataset):
+    def __init__(self, original_list):
+        self.original_list = original_list
+
+    def __len__(self):
+        return len(self.original_list)
+
+    def __getitem__(self, i):
+        return self.original_list[i]
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -44,13 +59,15 @@ if __name__ == "__main__":
         "neutral": [],
     }
     if os.path.isfile(
-        f"results/{args.model.split('/')[1]}_results_emotions.pkl"
+        f"results/{args.model.split('/')[-1]}_long_results_emotions.pkl"
     ):
         df = pd.read_pickle(
-            f"results/{args.model.split('/')[1]}_results_emotions.pkl"
+            f"results/{args.model.split('/')[-1]}_long_results_emotions.pkl"
         )
     else:
-        df = pd.read_pickle(f"results/{args.model.split('/')[1]}_results.pkl")
+        df = pd.read_pickle(
+            f"results/{args.model.split('/')[-1]}_long_results.pkl"
+        )
         emotion_classifier = pipeline(
             task="text-classification",
             model="AnasAlokla/multilingual_go_emotions_V1.2",
@@ -58,26 +75,47 @@ if __name__ == "__main__":
             max_length=512,
             truncation=True,
         )
-        results = emotion_classifier(df["model_answer"].tolist(), batch_size=8)
+        results = [
+            result
+            for result in tqdm(
+                emotion_classifier(
+                    ListDataset(df["model_answer"].tolist()), batch_size=8
+                )
+            )
+        ]
         for result in results:
             for e in result:
                 emotions[e["label"]].append(e["score"])
         df_emotions = pd.DataFrame(emotions)
         df = pd.concat([df, df_emotions], axis=1)
         df.to_pickle(
-            f"results/{args.model.split('/')[1]}_results_emotions.pkl"
+            f"results/{args.model.split('/')[-1]}_long_results_emotions.pkl"
         )
 
     for emotion in list(emotions.keys()):
-        for var in ["persona_type", "persona_id", "persona_text"]:
-            values = []
-            for v in df[var].unique():
-                if pd.isna(v):
-                    vals = 1 * (df.loc[df[var].isna(), emotion])
-                else:
-                    vals = 1 * (df.loc[df[var] == v, emotion])
-                values.append(vals.tolist())
-            pvalue = f_oneway(*values).pvalue
-            if pvalue < 0.05:
-                print(emotion, var, tukey_hsd(*values))
-                print(df.groupby(var, dropna=False)[emotion].mean())
+        values = []
+        for v in df["persona_type"].unique():
+            if pd.isna(v):
+                vals = 1 * (df.loc[df["persona_type"].isna(), emotion])
+            else:
+                vals = 1 * (df.loc[df["persona_type"] == v, emotion])
+            values.append(vals.tolist())
+        pvalue = f_oneway(*values).pvalue
+        if pvalue < 0.05:
+            print(emotion, "persona_type", tukey_hsd(*values))
+            print(df.groupby("persona_type", dropna=False)[emotion].mean())
+            print(df.groupby("persona_text", dropna=False)[emotion].mean())
+            p_ids = (
+                df.groupby("persona_id", dropna=False)[emotion]
+                .mean()
+                .sort_values()
+                .reset_index()
+            )
+            largest = p_ids.nlargest(5, emotion)["persona_id"].values
+            smallest = p_ids.nsmallest(5, emotion)["persona_id"].values
+            print("Largest:")
+            for p_id in largest:
+                print(df[df["persona_id"] == p_id]["persona_text"].unique())
+            print("Smallest:")
+            for p_id in smallest:
+                print(df[df["persona_id"] == p_id]["persona_text"].unique())
