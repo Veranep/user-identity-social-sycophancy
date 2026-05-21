@@ -33,7 +33,7 @@ User information:
                 revision="154873d548cd2fd8055ccb38fe80117638071dce",
             )["train"]
             .shuffle(seed=21)
-            .select(list(range(400)))
+            .select(list(range(500)))
             .to_pandas()
         )
         df_personas["hobbies"] = df_personas[
