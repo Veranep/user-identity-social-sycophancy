@@ -147,10 +147,13 @@ User information:
         ].reset_index(drop=True)
         df_personas = df_personas.loc[
             ~df_personas["age"].isin(
-                ["Less than 20", "60 -64", "65 or older", "70 or older"]
+                ["Less than 20", "60 - 64", "65 or older", "70 or older"]
             )
         ].reset_index(drop=True)
         df_personas = df_personas.iloc[:n]
+        df_personas = df_personas.drop(
+            columns=["grand_children", "gender_mention"]
+        )
         df_personas.to_pickle(f"data/personas_{n}.gz")
 
     else:
