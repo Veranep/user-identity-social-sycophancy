@@ -28,7 +28,10 @@ User information:
     n = 200
     if not os.path.isfile(f"data/personas_{n}.gz"):
         df_personas = (
-            load_dataset("Salesforce/SCOPE-Persona")["train"]
+            load_dataset(
+                "Salesforce/SCOPE-Persona",
+                revision="154873d548cd2fd8055ccb38fe80117638071dce",
+            )["train"]
             .shuffle(seed=21)
             .select(list(range(400)))
             .to_pandas()
