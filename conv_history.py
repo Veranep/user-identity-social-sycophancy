@@ -102,8 +102,50 @@ User information:
         df_personas["age"] = df_personas["demographic_information"].apply(
             lambda x: dict(x)["Select Your Age"]
         )
+        df_personas["grand_children"] = pd.DataFrame(
+            {
+                col: df_personas[col].str.contains("grandchild")
+                for col in [
+                    "motivation",
+                    "recognition",
+                    "life_story",
+                    "crossroads",
+                    "family",
+                    "influence",
+                    "setback",
+                    "politics",
+                    "assumptions",
+                ]
+            }
+        ).any(axis=1)
+        df_personas["gender_mention"] = pd.DataFrame(
+            {
+                col: df_personas[col].str.contains(
+                    r"\b(?!([Hh]uman|German)\b)[a-zA-Z]*man\b"
+                )
+                for col in [
+                    "motivation",
+                    "recognition",
+                    "life_story",
+                    "crossroads",
+                    "family",
+                    "influence",
+                    "setback",
+                    "politics",
+                    "assumptions",
+                ]
+            }
+        ).any(axis=1)
         df_personas = df_personas.loc[
-            df_personas["age"] != "Less than 20"
+            ~df_personas["grand_children"]
+        ].reset_index(drop=True)
+        df_personas = df_personas.loc[
+            ~df_personas["gender_mention"]
+        ].reset_index(drop=True)
+        df_personas = df_personas.loc[
+            ~df_personas["age"].isin(
+                ["Less than 20", "60 -64", "65 or older", "70 or older"]
+            )
         ].reset_index(drop=True)
         df_personas = df_personas.iloc[:n]
         df_personas.to_pickle(f"data/personas_{n}.gz")
@@ -131,31 +173,31 @@ User information:
         for persona_type in persona_types:
             texts.append(df_personas.iloc[i][persona_type])
 
-    if os.path.isfile("batch_output_ch_final.jsonl"):
-        with open("batch_output_ch_final.jsonl", "r") as json_file:
-            json_list = list(json_file)
+    # if os.path.isfile("batch_output_ch_final.jsonl"):
+    #     with open("batch_output_ch_final.jsonl", "r") as json_file:
+    #         json_list = list(json_file)
 
-        output = [json.loads(f) for f in json_list]
-        output = {
-            int(o["custom_id"].split("-")[1]): o["response"]["body"][
-                "choices"
-            ][0]["message"]["content"]
-            for o in output
-        }
-        for i in range(len(persona_types) * n):
-            if args.verbose:
-                print(texts[i])
-                print(
-                    "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-                )
-                print(output[i])
-                print(
-                    "-----------------------------------------------------------------------------"
-                )
-            persona_type = persona_types[i % len(persona_types)]
-            idx = i // len(persona_types)
-            df_personas.loc[idx, persona_type] = output[i]
-        df_personas.to_pickle(f"data/personas_{n}_ch.gz")
+    #     output = [json.loads(f) for f in json_list]
+    #     output = {
+    #         int(o["custom_id"].split("-")[1]): o["response"]["body"][
+    #             "choices"
+    #         ][0]["message"]["content"]
+    #         for o in output
+    #     }
+    #     for i in range(len(persona_types) * n):
+    #         if args.verbose:
+    #             print(texts[i])
+    #             print(
+    #                 "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+    #             )
+    #             print(output[i])
+    #             print(
+    #                 "-----------------------------------------------------------------------------"
+    #             )
+    #         persona_type = persona_types[i % len(persona_types)]
+    #         idx = i // len(persona_types)
+    #         df_personas.loc[idx, persona_type] = output[i]
+    #     df_personas.to_pickle(f"data/personas_{n}_ch.gz")
 
     # else:
     #     lines = [
