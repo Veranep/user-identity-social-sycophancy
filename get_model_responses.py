@@ -71,8 +71,6 @@ if __name__ == "__main__":
         torch_dtype=torch.bfloat16,
         device_map="auto",
     )
-    if not model.tokenizer.pad_token_id:
-        model.tokenizer.pad_token_id = model.tokenizer.eos_token_id
 
     df = pd.read_pickle("data/aita-nta-flip_rewritten_2000.gz")
     n = 200
@@ -193,6 +191,8 @@ if __name__ == "__main__":
         )
 
     if "model_answer_constrained" not in df_data and not args.long:
+        if not tokenizer.pad_token_id:
+            tokenizer.pad_token_id = tokenizer.eos_token_id
         tokens_of_interest_yes = ["Yes", " Yes", "yes", " yes"]
         token_ids_yes = [
             tokenizer.encode(t, add_special_tokens=False)[0]
@@ -221,6 +221,8 @@ if __name__ == "__main__":
         )
 
     if "model_answer" not in df_data and args.long:
+        if not model.tokenizer.pad_token_id:
+            model.tokenizer.pad_token_id = model.tokenizer.eos_token_id
         model = pipeline(
             "text-generation",
             model=model,
