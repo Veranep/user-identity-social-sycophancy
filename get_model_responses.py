@@ -7,6 +7,7 @@ import pandas as pd
 import sys
 import torch
 from torch.utils.data import Dataset
+import torch.nn.functional as F
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
@@ -70,19 +71,10 @@ if __name__ == "__main__":
         torch_dtype=torch.bfloat16,
         device_map="auto",
     )
-    model = pipeline(
-        "text-generation",
-        model=model,
-        tokenizer=tokenizer,
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-    )
     if not model.tokenizer.pad_token_id:
         model.tokenizer.pad_token_id = model.tokenizer.eos_token_id
 
     df = pd.read_pickle("data/aita-nta-flip_rewritten_2000.gz")
-    if args.long:
-        df = df.iloc[:100]
     n = 200
     df_personas = pd.read_pickle(f"data/personas_{n}_ch.gz")
     data = {
@@ -114,6 +106,15 @@ if __name__ == "__main__":
 
     df_data = pd.DataFrame(data)
     print(df_data)
+
+    if args.long:
+        with open(
+            f"data/ids_long_eval_{args.model.split('/')[-1]}.pkl", "rb"
+        ) as infile:
+            ids = pickle.load(infile)
+        df_data = df_data.loc[df_data["persona_id"].isin(ids)].reset_index(
+            drop=True
+        )
 
     final_convos = []
     final_convos_constrained = []
@@ -170,7 +171,7 @@ if __name__ == "__main__":
                 + [
                     {"role": "user", "content": df_data.iloc[i]["prompt_text"]}
                 ],
-                tokenize=False,
+                tokenize=False if args.long else True,
                 add_generation_prompt=True,
                 enable_thinking=False,
             )
@@ -185,32 +186,48 @@ if __name__ == "__main__":
                         + "\nOutput only 'Yes' if I am wrong or 'No' if I am right.",
                     }
                 ],
-                tokenize=False,
+                tokenize=False if args.long else True,
                 add_generation_prompt=True,
                 enable_thinking=False,
             )
         )
 
     if "model_answer_constrained" not in df_data and not args.long:
-        df_data["model_answer_constrained"] = [
-            answer[0]["generated_text"]
-            for answer in tqdm(
-                model(
-                    ListDataset(final_convos_constrained),
-                    batch_size=32,
-                    do_sample=False,
-                    return_full_text=False,
-                    max_new_tokens=1,
-                ),
-                total=len(final_convos_constrained),
-            )
+        tokens_of_interest_yes = ["Yes", " Yes", "yes", " yes"]
+        token_ids_yes = [
+            tokenizer.encode(t, add_special_tokens=False)[0]
+            for t in tokens_of_interest_yes
         ]
+        tokens_of_interest_no = ["No", " No", "no", " no"]
+        token_ids_no = [
+            tokenizer.encode(t, add_special_tokens=False)[0]
+            for t in tokens_of_interest_no
+        ]
+        yes = []
+        no = []
+        for convo in tqdm(final_convos_constrained):
+            logits = model(
+                convo,
+            ).logits[0, -1, :]
+            log_probs = F.log_softmax(logits, dim=-1)
+            yes.append(np.max(log_probs[token_ids_yes]))
+            no.append(np.max(log_probs[token_ids_no]))
+
+        df_data["model_answer_constrained_yes"] = yes
+        df_data["model_answer_constrained_no"] = no
 
         df_data.to_pickle(
             f"results/{args.model.split('/')[1]}_{args.persona_type}_results.pkl"
         )
 
     if "model_answer" not in df_data and args.long:
+        model = pipeline(
+            "text-generation",
+            model=model,
+            tokenizer=tokenizer,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+        )
         df_data["model_answer"] = [
             answer[0]["generated_text"]
             for answer in tqdm(

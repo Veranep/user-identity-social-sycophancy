@@ -6,11 +6,11 @@ from openai import OpenAI
 import pandas as pd
 from tqdm import tqdm
 
-# client = OpenAI(
-#     # This is the default and can be omitted
-#     api_key=os.environ.get("OPENAI_API_KEY"),
-#     base_url="https://eu.api.openai.com/v1",
-# )
+client = OpenAI(
+    # This is the default and can be omitted
+    api_key=os.environ.get("OPENAI_API_KEY"),
+    # base_url="https://eu.api.openai.com/v1",
+)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -179,66 +179,72 @@ User information:
         for persona_type in persona_types:
             texts.append(df_personas.iloc[i][persona_type])
 
-    # if os.path.isfile("batch_output_ch_final.jsonl"):
-    #     with open("batch_output_ch_final.jsonl", "r") as json_file:
-    #         json_list = list(json_file)
+    if os.path.isfile("batch_output_ch_final.jsonl"):
+        with open("batch_output_ch_final.jsonl", "r") as json_file:
+            json_list = list(json_file)
 
-    #     output = [json.loads(f) for f in json_list]
-    #     output = {
-    #         int(o["custom_id"].split("-")[1]): o["response"]["body"][
-    #             "choices"
-    #         ][0]["message"]["content"]
-    #         for o in output
-    #     }
-    #     for i in range(len(persona_types) * n):
-    #         if args.verbose:
-    #             print(texts[i])
-    #             print(
-    #                 "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-    #             )
-    #             print(output[i])
-    #             print(
-    #                 "-----------------------------------------------------------------------------"
-    #             )
-    #         persona_type = persona_types[i % len(persona_types)]
-    #         idx = i // len(persona_types)
-    #         df_personas.loc[idx, persona_type] = output[i]
-    #     df_personas.to_pickle(f"data/personas_{n}_ch.gz")
+        output = [json.loads(f) for f in json_list]
+        output = {
+            int(o["custom_id"].split("-")[1]): o["response"]["body"][
+                "choices"
+            ][0]["message"]["content"]
+            for o in output
+        }
+        for i in range(len(persona_types) * n):
+            if args.verbose:
+                print(texts[i])
+                print(
+                    "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+                )
+                print(output[i])
+                print(
+                    "-----------------------------------------------------------------------------"
+                )
+            persona_type = persona_types[i % len(persona_types)]
+            idx = i // len(persona_types)
+            df_personas.loc[idx, persona_type] = output[i]
+        df_personas.to_pickle(f"data/personas_{n}_ch.gz")
 
-    # else:
-    #     lines = [
-    #         {
-    #             "custom_id": f"request-{i}",
-    #             "method": "POST",
-    #             "url": "/v1/chat/completions",
-    #             "body": {
-    #                 "model": "gpt-5-mini",
-    #                 "messages": [
-    #                     {
-    #                         "role": "system",
-    #                         "content": "You are a helpful assistant.",
-    #                     },
-    #                     {"role": "user", "content": prompt.format(text=text)},
-    #                 ],
-    #             },
-    #         }
-    #         for i, text in enumerate(texts)
-    #     ]
-    #     with open("batch_input_ch_final.jsonl", "w") as f:
-    #         for item in lines:
-    #             f.write(json.dumps(item) + "\n")
-    #     batch_input_file = client.files.create(
-    #         file=open("batch_input_ch_final.jsonl", "rb"), purpose="batch"
-    #     )
+    # batch = client.batches.retrieve('batch_...')
+    # file_response = client.files.content('file-...')
+    # with open("batch_output_ch_final.jsonl", "w") as f:
+    #    f.write(file_response.text)
 
-    #     print(batch_input_file)
-    #     batch_input_file_id = batch_input_file.id
-    #     batch = client.batches.create(
-    #         input_file_id=batch_input_file_id,
-    #         endpoint="/v1/chat/completions",
-    #         completion_window="24h",
-    #         metadata={
-    #             "description": f"write conversation history for {n} personas"
-    #         },
-    #     )
-    #     print(batch)
+    else:
+        pass
+        # lines = [
+        #     {
+        #         "custom_id": f"request-{i}",
+        #         "method": "POST",
+        #         "url": "/v1/chat/completions",
+        #         "body": {
+        #             "model": "gpt-5-mini",
+        #             "messages": [
+        #                 {
+        #                     "role": "system",
+        #                     "content": "You are a helpful assistant.",
+        #                 },
+        #                 {"role": "user", "content": prompt.format(text=text)},
+        #             ],
+        #         },
+        #     }
+        #     for i, text in enumerate(texts)
+        # ]
+        # with open("batch_input_ch_final.jsonl", "w") as f:
+        #     for item in lines:
+        #         f.write(json.dumps(item) + "\n")
+        # batch_input_file = client.files.create(
+        #     file=open("batch_input_ch_final.jsonl", "rb"), purpose="batch"
+        # )
+
+        # print(batch_input_file)
+        # batch_input_file_id = batch_input_file.id
+        # batch = client.batches.create(
+        #     input_file_id=batch_input_file_id,
+        #     endpoint="/v1/chat/completions",
+        #     completion_window="24h",
+        #     metadata={
+        #         "description": f"write conversation history for {n} personas"
+        #     },
+        # )
+        # print(batch)

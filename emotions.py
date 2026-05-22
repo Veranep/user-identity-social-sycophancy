@@ -103,8 +103,16 @@ if __name__ == "__main__":
         pvalue = f_oneway(*values).pvalue
         if pvalue < 0.05:
             print(emotion, "persona_type", tukey_hsd(*values))
-            print(df.groupby("persona_type", dropna=False)[emotion].mean())
-            print(df.groupby("persona_text", dropna=False)[emotion].mean())
+            print(
+                df.groupby("persona_type", dropna=False)[emotion]
+                .mean()
+                .sort_values()
+            )
+            print(
+                df.groupby("persona_text", dropna=False)[emotion]
+                .mean()
+                .sort_values()
+            )
             p_ids = (
                 df.groupby("persona_id", dropna=False)[emotion]
                 .mean()
