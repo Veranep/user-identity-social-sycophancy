@@ -235,36 +235,12 @@ if __name__ == "__main__":
         yes = []
         no = []
         for convo in tqdm(final_convos_constrained):
-            print(
-                model.generate(
-                    **convo.to(device),
-                    max_new_tokens=1,
-                    output_logits=True,
-                    return_dict_in_generate=True,
-                )
-            )
-            print(
-                model.generate(
-                    **convo.to(device),
-                    max_new_tokens=1,
-                    output_logits=True,
-                    return_dict_in_generate=True,
-                )["logits"]
-            )
-            print(
-                model.generate(
-                    **convo.to(device),
-                    max_new_tokens=1,
-                    output_logits=True,
-                    return_dict_in_generate=True,
-                )["logits"][0]
-            )
             logits = model.generate(
                 **convo.to(device),
                 max_new_tokens=1,
                 output_logits=True,
                 return_dict_in_generate=True,
-            )["logits"][0]
+            )["logits"][0][0]
             log_probs = F.log_softmax(logits, dim=-1)
             print(log_probs, type(log_probs))
             print(token_ids_yes, type(token_ids_yes))
