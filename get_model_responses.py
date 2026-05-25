@@ -120,7 +120,8 @@ if __name__ == "__main__":
     else:
         final_convos_constrained = []
 
-    for i in tqdm(range(len(df_data))):
+    for i in [0]:
+        # for i in tqdm(range(len(df_data))):
         string_convo = (
             df_data.iloc[i]["persona_text"]
             .strip()
@@ -234,6 +235,30 @@ if __name__ == "__main__":
         yes = []
         no = []
         for convo in tqdm(final_convos_constrained):
+            print(
+                model.generate(
+                    **convo.to(device),
+                    max_new_tokens=1,
+                    output_logits=True,
+                    return_dict_in_generate=True,
+                )
+            )
+            print(
+                model.generate(
+                    **convo.to(device),
+                    max_new_tokens=1,
+                    output_logits=True,
+                    return_dict_in_generate=True,
+                )["logits"]
+            )
+            print(
+                model.generate(
+                    **convo.to(device),
+                    max_new_tokens=1,
+                    output_logits=True,
+                    return_dict_in_generate=True,
+                )["logits"][0]
+            )
             logits = model.generate(
                 **convo.to(device),
                 max_new_tokens=1,
@@ -241,6 +266,8 @@ if __name__ == "__main__":
                 return_dict_in_generate=True,
             )["logits"][0]
             log_probs = F.log_softmax(logits, dim=-1)
+            print(log_probs, type(log_probs))
+            print(token_ids_yes, type(token_ids_yes))
             yes.append(np.max(log_probs[token_ids_yes]))
             no.append(np.max(log_probs[token_ids_no]))
 
