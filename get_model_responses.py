@@ -120,7 +120,7 @@ if __name__ == "__main__":
     else:
         final_convos_constrained = []
 
-    for i in [0]:
+    for i in range(100):
         # for i in tqdm(range(len(df_data))):
         string_convo = (
             df_data.iloc[i]["persona_text"]
