@@ -253,8 +253,8 @@ if __name__ == "__main__":
             print(log_probs, type(log_probs), log_probs.shape)
             print(token_ids_yes, type(token_ids_yes))
             print(log_probs[token_ids_yes])
-            yes.append(np.max(log_probs[token_ids_yes]))
-            no.append(np.max(log_probs[token_ids_no]))
+            yes.append(torch.max(log_probs[token_ids_yes]))
+            no.append(torch.max(log_probs[token_ids_no]))
 
         df_data["model_answer_constrained_yes"] = yes
         df_data["model_answer_constrained_no"] = no
