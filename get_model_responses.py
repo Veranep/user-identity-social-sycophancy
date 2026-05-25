@@ -71,6 +71,7 @@ if __name__ == "__main__":
         torch_dtype=torch.bfloat16,
         device_map="auto",
     )
+    device = model.device
 
     df = pd.read_pickle("data/aita-nta-flip_rewritten_2000.gz")
     n = 200
@@ -234,7 +235,7 @@ if __name__ == "__main__":
         no = []
         for convo in tqdm(final_convos_constrained):
             logits = model.generate(
-                convo,
+                **convo.to(device),
                 max_new_tokens=1,
                 output_logits=True,
                 return_dict_in_generate=True,
