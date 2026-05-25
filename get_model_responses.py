@@ -114,10 +114,12 @@ if __name__ == "__main__":
             drop=True
         )
 
-    final_convos = []
-    final_convos_constrained = []
+    if args.long:
+        final_convos = []
+    else:
+        final_convos_constrained = []
 
-    for i in range(len(df_data)):
+    for i in tqdm(range(len(df_data))):
         string_convo = (
             df_data.iloc[i]["persona_text"]
             .strip()
@@ -127,8 +129,27 @@ if __name__ == "__main__":
             .replace('1/2"', "1/2 inch")
             .replace('1"x2"', "1x2 inches")
             .replace('3/4"', "3/4 inch")
+            .replace('24"x8"', "24 x 8 inches")
+            .replace('4"', "4 inch")
             .replace('12" x 8"', "12 x 8 inches")
             .replace('"assistant":', '"assistant",')
+            .replace("\u2013", "-")
+            .replace("\u2014", "-")
+            .replace("\u2019", "'")
+            .replace('outcome‑focused): \\"I', "outcome‑focused): 'I")
+            .replace('design.\\" \\n\\nE', "design.' \\n\\nE")
+            .replace('skills): \\"I', "skills): 'I")
+            .replace('experience.\\" \\n\\nE', "experience.' \\n\\nE")
+            .replace('confident): \\"I combine', "confident): 'I combine")
+            .replace('projects.\\" \\n\\nOne', "projects.' \\n\\nOne")
+            .replace('tagline: \\"Artist', "tagline: 'Artist")
+            .replace(
+                'experiences.\\" \\n\\nLinkedIn',
+                "experiences.' \\n\\nLinkedIn",
+            )
+            .replace('paragraphs): \\"I', "paragraphs): 'I")
+            .replace('tech." \\n\\nDelivery', "tech.' \\n\\nDelivery")
+            .replace('more." This', "more.” This")
             .split("  // Note:")[0]
         )
         if string_convo[-4:] == "]} ]":
@@ -163,32 +184,38 @@ if __name__ == "__main__":
                     + persona_convo[t]["content"]
                 )
                 del persona_convo[t]
-        final_convos.append(
-            tokenizer.apply_chat_template(
-                persona_convo
-                + [
-                    {"role": "user", "content": df_data.iloc[i]["prompt_text"]}
-                ],
-                tokenize=False if args.long else True,
-                add_generation_prompt=True,
-                enable_thinking=False,
+        if args.long:
+            final_convos.append(
+                tokenizer.apply_chat_template(
+                    persona_convo
+                    + [
+                        {
+                            "role": "user",
+                            "content": df_data.iloc[i]["prompt_text"],
+                        }
+                    ],
+                    tokenize=False,
+                    add_generation_prompt=True,
+                    enable_thinking=False,
+                )
             )
-        )
-        final_convos_constrained.append(
-            tokenizer.apply_chat_template(
-                persona_convo
-                + [
-                    {
-                        "role": "user",
-                        "content": df_data.iloc[i]["prompt_text"]
-                        + "\nOutput only 'Yes' if I am wrong or 'No' if I am right.",
-                    }
-                ],
-                tokenize=False if args.long else True,
-                add_generation_prompt=True,
-                enable_thinking=False,
+        else:
+            final_convos_constrained.append(
+                tokenizer.apply_chat_template(
+                    persona_convo
+                    + [
+                        {
+                            "role": "user",
+                            "content": df_data.iloc[i]["prompt_text"]
+                            + "\nOutput only 'Yes' if I am wrong or 'No' if I am right.",
+                        }
+                    ],
+                    tokenize=True,
+                    add_generation_prompt=True,
+                    enable_thinking=False,
+                    return_tensors="pt",
+                )
             )
-        )
 
     if "model_answer_constrained" not in df_data and not args.long:
         if not tokenizer.pad_token_id:
@@ -206,9 +233,12 @@ if __name__ == "__main__":
         yes = []
         no = []
         for convo in tqdm(final_convos_constrained):
-            logits = model(
+            logits = model.generate(
                 convo,
-            ).logits[0, -1, :]
+                max_new_tokens=1,
+                output_logits=True,
+                return_dict_in_generate=True,
+            )["logits"][0]
             log_probs = F.log_softmax(logits, dim=-1)
             yes.append(np.max(log_probs[token_ids_yes]))
             no.append(np.max(log_probs[token_ids_no]))
