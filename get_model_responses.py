@@ -172,6 +172,8 @@ if __name__ == "__main__":
                 string_convo = string_convo[:-3] + "}]"
             if string_convo[-3:] == ".}]":
                 string_convo = string_convo[:-3] + '."}]'
+            elif string_convo[-3:] == ".]}":
+                string_convo = string_convo[:-3] + '."}]'
         persona_convo = eval(string_convo)
         mod = 0
         for t in range(len(persona_convo)):
