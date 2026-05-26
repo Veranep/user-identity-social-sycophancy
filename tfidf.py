@@ -11,6 +11,7 @@ import pandas as pd
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 from sklearn.linear_model import ElasticNetCV
+from tqdm import tqdm
 
 
 # In[2]:
@@ -25,14 +26,14 @@ model = "gemma-3-12b-it"
 df = pd.read_pickle(f"results/{model.split('/')[-1]}_results.pkl")
 
 original = df[df["prompt_type"] == "original_post"][
-        [
-            "persona_type",
-            "persona_id",
-            "persona_text",
-            "prompt_id",
-            "prompt_text",
-            "model_answer_constrained"
-        ]
+    [
+        "persona_type",
+        "persona_id",
+        "persona_text",
+        "prompt_id",
+        "prompt_text",
+        "model_answer_constrained",
+    ]
 ].rename(
     columns={
         "prompt_text": "prompt_text_original",
@@ -48,7 +49,7 @@ flipped = df[df["prompt_type"] == "flipped_story"][
         "persona_text",
         "prompt_id",
         "prompt_text",
-        "model_answer_constrained"
+        "model_answer_constrained",
     ]
 ].rename(
     columns={
@@ -70,21 +71,15 @@ print("got result")
 # In[4]:
 
 
-df = df.loc[
-        (
-            df["model_answer_constrained_original_post"] == "No"
-        )
-]
-df["flipped_is_na"] = (
-        df["model_answer_constrained_flipped_story"] == "No"
-)
+df = df.loc[(df["model_answer_constrained_original_post"] == "No")]
+df["flipped_is_na"] = df["model_answer_constrained_flipped_story"] == "No"
 
 
 # In[ ]:
 
 
 vectorizer = TfidfVectorizer()
-X = vectorizer.fit_transform(df["persona_text"])
+X = vectorizer.fit_transform(tqdm(df["persona_text"]))
 feature_names = vectorizer.get_feature_names_out()
 
 
@@ -93,10 +88,7 @@ feature_names = vectorizer.get_feature_names_out()
 
 l1_ratios = [0.1, 0.5, 0.7, 0.9, 0.95, 0.99, 1]  # α candidates
 en_model = ElasticNetCV(
-    l1_ratio=l1_ratios,
-    cv=5,
-    max_iter=10000,
-    random_state=42,
+    l1_ratio=l1_ratios, cv=5, max_iter=10000, random_state=42, verbose=5
 )
 
 best_model = en_model.fit(
@@ -124,9 +116,6 @@ print(f"Score: {score}")
 mask = coefs != 0
 sel_names = np.array(feature_names)[mask]
 sel_coefs = coefs[mask]
-
-if len(sel_names) == 0:
-    continue
 
 # Sort by absolute value descending
 order = np.argsort(np.abs(sel_coefs))[::-1]
@@ -170,11 +159,15 @@ for bar, val in zip(bars, top_coefs):
     )
 
 ax.set_xticks(x_pos)
-ax.set_xticklabels(top_names, rotation=35, ha="right", fontsize=9, color=TEXT_COLOR)
+ax.set_xticklabels(
+    top_names, rotation=35, ha="right", fontsize=9, color=TEXT_COLOR
+)
 ax.tick_params(axis="y", colors=TEXT_COLOR, labelsize=8)
 ax.axhline(0, color=TEXT_COLOR, linewidth=0.8, alpha=0.4, zorder=2)
 ax.grid(axis="y", color=GRID_COLOR, linewidth=0.6, zorder=1)
-ax.set_ylabel("Standardised Coefficient", color=TEXT_COLOR, fontsize=10, labelpad=8)
+ax.set_ylabel(
+    "Standardised Coefficient", color=TEXT_COLOR, fontsize=10, labelpad=8
+)
 ax.spines[["top", "right", "left", "bottom"]].set_visible(False)
 
 # Title & subtitle
@@ -222,4 +215,3 @@ plt.savefig(
 )
 plt.show()
 print(f"Plot saved to figures/{model}_sycophancy_tfidf.png")
-
