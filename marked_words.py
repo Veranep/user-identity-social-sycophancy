@@ -128,7 +128,7 @@ def marked_words(persona, unmarked, all_text):
     delt = get_log_odds(
         persona,
         unmarked,
-        df["text"],
+        all_text,
     )
 
     c1 = []
@@ -165,7 +165,9 @@ if __name__ == "__main__":
         help="Model to evaluate",
     )
     args = parser.parse_args()
-    df = pd.read_pickle(f"results/{args.model.split('/')[1]}_results.pkl")
+    df = pd.read_pickle(
+        f"results/{args.model.split('/')[-1]}_long_results.pkl"
+    )
     for var in ["persona_type", "persona_id", "persona_text"]:
         for v in df[var].unique():
             persona_text = df.loc[df[var] == v, "model_answer"]
