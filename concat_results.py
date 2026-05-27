@@ -2,7 +2,9 @@ import argparse
 import os
 import io
 import torch
+import numpy as np
 import pandas as pd
+import pickle
 
 from evaluate import persona_types
 
@@ -39,6 +41,23 @@ if __name__ == "__main__":
                 "rb",
             ) as infile:
                 df_pt = CPUUnpickler(f).load()
+            df_pt["model_answer_constrained_yes"] = df_pt[
+                "model_answer_constrained_yes"
+            ].map(lambda x: x.numpy())
+            df_pt["model_answer_constrained_no"] = df_pt[
+                "model_answer_constrained_no"
+            ].map(lambda x: x.numpy())
+            df_pt["model_answer_constrained_no-yes"] = (
+                df_pt["model_answer_constrained_no"]
+                - df_pt["model_answer_constrained_yes"]
+            )
+            df_pt = df_pt["model_answer_constrained_no-yes"].astype(np.float32)
+            df_pt = df_pt.drop(
+                columns=[
+                    "model_answer_constrained_no",
+                    "model_answer_constrained_yes",
+                ]
+            )
         else:
             df_pt = pd.read_pickle(
                 f"results/{args.model.split('/')[-1]}_{persona_type}_long_results.pkl"
