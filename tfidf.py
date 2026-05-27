@@ -287,8 +287,8 @@ fig.text(
 fig.text(
     0.5,
     0.945,
-    f"λ = {best_alpha:.4f}   |   α (l1_ratio) = {best_l1:.2f}   |   "
-    f"{len(sel_coefs)} of {len(en_model.coef_)} features selected   |   "
+    # f"λ = {best_alpha:.4f}   |   α (l1_ratio) = {best_l1:.2f}   |   "
+    # f"{len(sel_coefs)} of {len(en_model.coef_)} features selected   |   "
     f"$R^2$ = {score:.3f}",
     fontsize=8.5,
     color=TEXT_COLOR,
