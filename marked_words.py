@@ -169,7 +169,11 @@ if __name__ == "__main__":
     df = pd.read_pickle(
         f"results/{args.model.split('/')[-1]}_long_results.pkl"
     )
-    for var in ["persona_text", "persona_id", "persona_type"]:
+    for var in [
+        "persona_type",
+        "persona_id",
+        "persona_text",
+    ]:
         for v in tqdm(df[var].unique()):
             persona_text = df.loc[df[var] == v, "model_answer"]
             unmarked_text = df.loc[df[var].isna(), "model_answer"]
