@@ -4,6 +4,7 @@ from collections import Counter
 import argparse
 from collections import defaultdict
 import math
+from tqdm import tqdm
 
 # code from https://github.com/myracheng/markedpersonas/blob/main/marked_words.py
 
@@ -168,13 +169,14 @@ if __name__ == "__main__":
     df = pd.read_pickle(
         f"results/{args.model.split('/')[-1]}_long_results.pkl"
     )
-    for var in ["persona_type", "persona_id", "persona_text"]:
-        for v in df[var].unique():
+    for var in ["persona_text", "persona_id", "persona_type"]:
+        for v in tqdm(df[var].unique()):
             persona_text = df.loc[df[var] == v, "model_answer"]
             unmarked_text = df.loc[df[var].isna(), "model_answer"]
             top_words = marked_words(
                 persona_text, unmarked_text, df["model_answer"]
             )
-            print(var, v)
-            print("Top words:")
-            print(top_words)
+            if top_words:
+                print(var, v)
+                print("Top words:")
+                print(top_words)
