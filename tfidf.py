@@ -201,7 +201,7 @@ best_model = Ridge().fit(
     X,
     df["flipped_is_na"],
 )
-coefs = en_model.coef_
+coefs = best_model.coef_
 score = best_model.score(
     X,
     df["flipped_is_na"],
