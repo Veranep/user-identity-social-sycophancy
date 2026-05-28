@@ -5,8 +5,9 @@ import torch
 import numpy as np
 import pandas as pd
 import pickle
+from tqdm import tqdm
 
-from evaluate import persona_types
+from get_model_responses import persona_types
 
 
 class CPUUnpickler(pickle.Unpickler):
@@ -30,34 +31,65 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     df = pd.DataFrame([])
-    for persona_type in persona_types:
+    for persona_type in tqdm(persona_types):
         if not os.path.isfile(
             f"results/{args.model.split('/')[-1]}_{persona_type}_{'long_' if args.long else ''}results.pkl"
         ):
             continue
         if not args.long:
-            with open(
-                f"results/{args.model.split('/')[-1]}_{persona_type}_results.pkl",
-                "rb",
-            ) as infile:
-                df_pt = CPUUnpickler(f).load()
-            df_pt["model_answer_constrained_yes"] = df_pt[
-                "model_answer_constrained_yes"
-            ].map(lambda x: x.numpy())
-            df_pt["model_answer_constrained_no"] = df_pt[
-                "model_answer_constrained_no"
-            ].map(lambda x: x.numpy())
-            df_pt["model_answer_constrained_no-yes"] = (
-                df_pt["model_answer_constrained_no"]
-                - df_pt["model_answer_constrained_yes"]
+            df_pt = pd.read_pickle(
+                f"results/{args.model.split('/')[-1]}_{persona_type}_results.pkl"
             )
-            df_pt = df_pt["model_answer_constrained_no-yes"].astype(np.float32)
-            df_pt = df_pt.drop(
-                columns=[
-                    "model_answer_constrained_no",
-                    "model_answer_constrained_yes",
-                ]
-            )
+            # df_pt["prompt_text"] = pd.factorize(df_pt["prompt_text"])[0]
+            # df_pt = df_pt.astype(object)
+            # df_pt = df_pt.drop(columns="model_answer_constrained")
+            # df_pt = df_pt.rename(
+            #     columns={
+            #         "model_answer_constrained_no_yes": "model_answer_constrained"
+            #     }
+            # )
+            # with open(
+            #     f"results/{args.model.split('/')[-1]}_{persona_type}_results.pkl",
+            #     "rb",
+            # ) as infile:
+            #     df_pt = CPUUnpickler(infile).load()
+
+            # df_pt["model_answer_constrained_yes"] = df_pt[
+            #     "model_answer_constrained_yes"
+            # ].map(lambda x: x.numpy())
+            # df_pt["model_answer_constrained_no"] = df_pt[
+            #     "model_answer_constrained_no"
+            # ].map(lambda x: x.numpy())
+            # df_pt["model_answer_constrained_no-yes"] = (
+            #     df_pt["model_answer_constrained_no"]
+            #     - df_pt["model_answer_constrained_yes"]
+            # )
+            # # df_pt = df_pt["model_answer_constrained_no-yes"].astype(np.float32)
+            # df_pt["model_answer_constrained_no-yes"] = df_pt[
+            #     "model_answer_constrained_no-yes"
+            # ].astype(np.float32)
+            # df_pt.loc[
+            #     df_pt["model_answer_constrained_no-yes"] > 0,
+            #     "model_answer_constrained_no_yes",
+            # ] = "No"
+            # df_pt.loc[
+            #     df_pt["model_answer_constrained_no-yes"] < 0,
+            #     "model_answer_constrained_no_yes",
+            # ] = "Yes"
+            # df_pt = df_pt.rename(
+            #     columns={
+            #         "model_answer_constrained_no-yes": "model_answer_constrained"
+            #     }
+            # )
+            # df_pt = df_pt.drop(
+            #     columns=[
+            #         "model_answer_constrained_no",
+            #         "model_answer_constrained_yes",
+            #     ]
+            # )
+            # df_pt.to_pickle(
+            #     f"results/{args.model.split('/')[-1]}_{persona_type}_results.pkl"
+            # )
         else:
             df_pt = pd.read_pickle(
                 f"results/{args.model.split('/')[-1]}_{persona_type}_long_results.pkl"
