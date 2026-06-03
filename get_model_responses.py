@@ -245,8 +245,10 @@ if __name__ == "__main__":
                 return_dict_in_generate=True,
             )["logits"][0][0]
             log_probs = F.log_softmax(logits, dim=-1)
-            yes.append(torch.max(log_probs[token_ids_yes]))
-            no.append(torch.max(log_probs[token_ids_no]))
+            yes.append(
+                torch.max(log_probs[token_ids_yes]).cpu().numpy().item()
+            )
+            no.append(torch.max(log_probs[token_ids_no]).cpu().numpy().item())
 
         df_data["model_answer_constrained_yes"] = yes
         df_data["model_answer_constrained_no"] = no
