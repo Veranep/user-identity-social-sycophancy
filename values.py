@@ -87,7 +87,7 @@ if __name__ == "__main__":
         login(args.token)
 
     system = KaleidoSys(
-        model_name="tsor13/kaleido-xxl"
+        model_name="tsor13/kaleido-large"
     )  # sizes: small, base, large, xl, xxl
 
     if os.path.isfile(
