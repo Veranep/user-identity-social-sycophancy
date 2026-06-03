@@ -1,5 +1,6 @@
 import argparse
 from KaleidoSys import KaleidoSys
+from huggingface_hub import login
 import os
 import pandas as pd
 from tqdm import tqdm
@@ -75,7 +76,15 @@ if __name__ == "__main__":
         default="meta-llama/Llama-3.1-8B-Instruct",
         help="Model to evaluate",
     )
+    parser.add_argument(
+        "-token",
+        type=str,
+        default="",
+        help="Huggingface token that grants access to Llama model",
+    )
     args = parser.parse_args()
+    if args.token:
+        login(args.token)
 
     system = KaleidoSys(
         model_name="tsor13/kaleido-xxl"
