@@ -1,6 +1,7 @@
 import argparse
 from KaleidoSys import KaleidoSys
 import pandas as pd
+from tqdm import tqdm
 
 values = [
     "Aesthetics",
@@ -90,7 +91,7 @@ if __name__ == "__main__":
             f"results/{args.model.split('/')[-1]}_long_results.pkl"
         )
 
-    for value in values:
+    for value in tqdm(values):
         if f"kaleido_{value}" not in df:
             n_items = len(df["model_answer"].tolist())
             df[f"kaleido_{value}"] = system.get_relevance(
