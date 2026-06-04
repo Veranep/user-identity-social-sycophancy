@@ -109,7 +109,7 @@ if __name__ == "__main__":
                 ["Value"] * n_items,
                 [value] * n_items,
                 batch_size=16,
-            )
+            )[:, 0].tolist()
             df.to_pickle(
                 f"results/{args.model.split('/')[-1]}_long_results_values.pkl"
             )
