@@ -45,20 +45,18 @@ if __name__ == "__main__":
             "liwc_insight",
         ]
     else:
-        df = pd.read_pickle(f"results/{model.split('/')[-1]}_results.pkl")
+        df = pd.read_pickle(f"results/{args.model.split('/')[-1]}_results.pkl")
+        df_personas = pd.read_pickle("data/base_data_persona.gz")
 
         original = df[df["prompt_type"] == "original_post"][
             [
                 "persona_type",
                 "persona_id",
-                "persona_text",
                 "prompt_id",
-                "prompt_text",
                 "model_answer_constrained",
             ]
         ].rename(
             columns={
-                "prompt_text": "prompt_text_original",
                 "model_answer_constrained": "model_answer_constrained_original_post",
             }
         )
@@ -68,14 +66,11 @@ if __name__ == "__main__":
             [
                 "persona_type",
                 "persona_id",
-                "persona_text",
                 "prompt_id",
-                "prompt_text",
                 "model_answer_constrained",
             ]
         ].rename(
             columns={
-                "prompt_text": "prompt_text_flipped",
                 "model_answer_constrained": "model_answer_constrained_flipped_story",
             }
         )
@@ -83,7 +78,7 @@ if __name__ == "__main__":
 
         df = original.merge(
             flipped,
-            on=["persona_type", "persona_id", "persona_text", "prompt_id"],
+            on=["persona_type", "persona_id", "prompt_id"],
             how="outer",
         )
 
@@ -92,6 +87,8 @@ if __name__ == "__main__":
         df = df.loc[(df["model_answer_constrained_original_post"] == "No")]
         df["sycophancy"] = df["model_answer_constrained_flipped_story"] == "No"
         target_cols = ["sycophancy"]
+        df = df.merge(df_personas, on=["persona_id", "persona_type"])
+        del df_personas
 
     vectorizer = TfidfVectorizer(min_df=10, max_df=0.7)
     X = vectorizer.fit_transform(tqdm(df["persona_text"].tolist()))
@@ -210,9 +207,11 @@ if __name__ == "__main__":
         plt.tight_layout(rect=[0, 0, 1, 0.93])
 
         plt.savefig(
-            f"figures/{model}_sycophancy_tfidf.png",
+            f"figures/{args.model.split('/')[-1]}_{target_col}_tfidf.png",
             dpi=150,
             bbox_inches="tight",
         )
         plt.show()
-        print(f"Plot saved to figures/{model}_{target_col}_tfidf.png")
+        print(
+            f"Plot saved to figures/{args.model.split('/')[-1]}_{target_col}_tfidf.png"
+        )
