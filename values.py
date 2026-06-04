@@ -3,6 +3,8 @@ from KaleidoSys import KaleidoSys
 from huggingface_hub import login
 import os
 import pandas as pd
+import torch
+from scipy.stats import f_oneway, tukey_hsd
 from tqdm import tqdm
 
 values = [
@@ -86,9 +88,10 @@ if __name__ == "__main__":
     if args.token:
         login(args.token)
 
-    system = KaleidoSys(
-        model_name="tsor13/kaleido-large"
-    )  # sizes: small, base, large, xl, xxl
+    if torch.cuda.is_available():
+        system = KaleidoSys(
+            model_name="tsor13/kaleido-xl"
+        )  # sizes: small, base, large, xl, xxl
 
     if os.path.isfile(
         f"results/{args.model.split('/')[-1]}_long_results_values.pkl"
@@ -102,14 +105,43 @@ if __name__ == "__main__":
         )
 
     for value in tqdm(values):
-        if f"kaleido_{value}" not in df:
+        if f"kaleido_{value}" not in df and torch.cuda.is_available():
             n_items = len(df["model_answer"].tolist())
             df[f"kaleido_{value}"] = system.get_relevance(
                 df["model_answer"].tolist(),
                 ["Value"] * n_items,
                 [value] * n_items,
-                batch_size=16,
+                batch_size=63,
             )[:, 0].tolist()
             df.to_pickle(
                 f"results/{args.model.split('/')[-1]}_long_results_values.pkl"
+            )
+
+    for value in [c for c in df.columns if "kaleido" in c]:
+        values = []
+        for v in df["persona_type"].unique():
+            if pd.isna(v):
+                vals = 1 * (df.loc[df["persona_type"].isna(), value])
+            else:
+                vals = 1 * (df.loc[df["persona_type"] == v, value])
+            values.append(vals.tolist())
+        pvalue = f_oneway(*values).pvalue
+        if pvalue < 0.05:
+            print(value, "persona_type", tukey_hsd(*values))
+            print(
+                df.groupby("persona_type", dropna=False)[value]
+                .mean()
+                .sort_values()
+            )
+            print(
+                df.groupby("persona_text", dropna=False)[value]
+                .mean()
+                .sort_values()
+            )
+            print(
+                df.groupby(["persona_text", "model_answer"], dropna=False)[
+                    value
+                ]
+                .mean()
+                .sort_values()
             )
