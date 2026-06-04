@@ -4,7 +4,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import numpy as np
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import Lasso
 from tqdm import tqdm
 
 
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     feature_names = vectorizer.get_feature_names_out()
 
     for target_col in target_cols:
-        best_model = Ridge().fit(
+        best_model = Lasso().fit(
             X,
             df[target_col],
         )
