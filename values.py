@@ -90,7 +90,7 @@ if __name__ == "__main__":
 
     if torch.cuda.is_available():
         system = KaleidoSys(
-            model_name="tsor13/kaleido-xl"
+            model_name="tsor13/kaleido-xxl"
         )  # sizes: small, base, large, xl, xxl
 
     if os.path.isfile(
