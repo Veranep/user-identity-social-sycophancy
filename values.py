@@ -108,7 +108,11 @@ if __name__ == "__main__":
         if f"kaleido_{value}" not in df and torch.cuda.is_available():
             n_items = len(df["model_answer"].tolist())
             df[f"kaleido_{value}"] = system.get_relevance(
-                df["model_answer"].tolist(),
+                df["model_answer"]
+                .str.split()
+                .apply(lambda x: x[:75])
+                .str.join(" ")
+                .tolist(),
                 ["Value"] * n_items,
                 [value] * n_items,
                 batch_size=63,
