@@ -33,66 +33,53 @@ if __name__ == "__main__":
     df = pd.DataFrame([])
     for persona_type in tqdm(persona_types):
         if not os.path.isfile(
-            f"results/{args.model.split('/')[-1]}_{persona_type}_{'long_' if args.long else ''}results.pkl"
+            f"/scratch/vneplen/user-identity/{args.model.split('/')[-1]}_{persona_type}_{'long_' if args.long else ''}results.pkl"
         ):
             continue
         if not args.long:
-            df_pt = pd.read_pickle(
-                f"results/{args.model.split('/')[-1]}_{persona_type}_results.pkl"
-            )
-            # df_pt["prompt_text"] = pd.factorize(df_pt["prompt_text"])[0]
-            # df_pt = df_pt.astype(object)
-            # df_pt = df_pt.drop(columns="model_answer_constrained")
-            # df_pt = df_pt.rename(
-            #     columns={
-            #         "model_answer_constrained_no_yes": "model_answer_constrained"
-            #     }
-            # )
             # with open(
-            #     f"results/{args.model.split('/')[-1]}_{persona_type}_results.pkl",
+            #     f"/scratch/vneplen/user-identity/{args.model.split('/')[-1]}_{persona_type}_results.pkl",
             #     "rb",
             # ) as infile:
             #     df_pt = CPUUnpickler(infile).load()
+            df_pt = pd.read_pickle(
+                f"/scratch/vneplen/user-identity/{args.model.split('/')[-1]}_{persona_type}_results.pkl"
+            )
+            print(df_pt)
 
-            # df_pt["model_answer_constrained_yes"] = df_pt[
-            #     "model_answer_constrained_yes"
-            # ].map(lambda x: x.numpy())
-            # df_pt["model_answer_constrained_no"] = df_pt[
-            #     "model_answer_constrained_no"
-            # ].map(lambda x: x.numpy())
-            # df_pt["model_answer_constrained_no-yes"] = (
-            #     df_pt["model_answer_constrained_no"]
-            #     - df_pt["model_answer_constrained_yes"]
-            # )
-            # # df_pt = df_pt["model_answer_constrained_no-yes"].astype(np.float32)
-            # df_pt["model_answer_constrained_no-yes"] = df_pt[
-            #     "model_answer_constrained_no-yes"
-            # ].astype(np.float32)
-            # df_pt.loc[
-            #     df_pt["model_answer_constrained_no-yes"] > 0,
-            #     "model_answer_constrained_no_yes",
-            # ] = "No"
-            # df_pt.loc[
-            #     df_pt["model_answer_constrained_no-yes"] < 0,
-            #     "model_answer_constrained_no_yes",
-            # ] = "Yes"
-            # df_pt = df_pt.rename(
-            #     columns={
-            #         "model_answer_constrained_no-yes": "model_answer_constrained"
-            #     }
-            # )
-            # df_pt = df_pt.drop(
-            #     columns=[
-            #         "model_answer_constrained_no",
-            #         "model_answer_constrained_yes",
-            #     ]
-            # )
-            # df_pt.to_pickle(
-            #     f"results/{args.model.split('/')[-1]}_{persona_type}_results.pkl"
-            # )
+            if "model_answer_constrained_yes" in df_pt:
+                df_pt["model_answer_constrained_yes"] = df_pt[
+                    "model_answer_constrained_yes"
+                ].map(lambda x: x.cpu().numpy())
+                df_pt["model_answer_constrained_no"] = df_pt[
+                    "model_answer_constrained_no"
+                ].map(lambda x: x.cpu().numpy())
+                df_pt.loc[
+                    df_pt["model_answer_constrained_no"]
+                    > df_pt["model_answer_constrained_yes"],
+                    "model_answer_constrained",
+                ] = "No"
+                df_pt.loc[
+                    df_pt["model_answer_constrained_yes"]
+                    > df_pt["model_answer_constrained_no"],
+                    "model_answer_constrained",
+                ] = "Yes"
+
+                df_pt = df_pt.drop(
+                    columns=[
+                        "model_answer_constrained_no",
+                        "model_answer_constrained_yes",
+                    ]
+                )
+                df_pt = df_pt.astype(object)
+                df_pt.to_pickle(
+                    f"/scratch/vneplen/user-identity/{args.model.split('/')[-1]}_{persona_type}_results.pkl"
+                )
+            df_pt = df_pt.drop(columns=["prompt_text", "persona_text"])
+
         else:
             df_pt = pd.read_pickle(
-                f"results/{args.model.split('/')[-1]}_{persona_type}_long_results.pkl"
+                f"/scratch/vneplen/user-identity/{args.model.split('/')[-1]}_{persona_type}_long_results.pkl"
             )
         df = pd.concat([df, df_pt], ignore_index=True)
     df.to_pickle(
