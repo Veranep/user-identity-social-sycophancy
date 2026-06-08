@@ -110,7 +110,7 @@ if __name__ == "__main__":
             df[f"kaleido_{value}"] = system.get_relevance(
                 df["model_answer"]
                 .str.split()
-                .apply(lambda x: x[:75])
+                .apply(lambda x: x[:70])
                 .str.join(" ")
                 .tolist(),
                 ["Value"] * n_items,
