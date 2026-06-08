@@ -4,6 +4,7 @@ from huggingface_hub import login
 import numpy as np
 import os
 import pandas as pd
+import pickle
 import sys
 import torch
 from torch.utils.data import Dataset
@@ -253,6 +254,7 @@ if __name__ == "__main__":
         df_data["model_answer_constrained_yes"] = yes
         df_data["model_answer_constrained_no"] = no
 
+        df_data = df_data.drop(columns=["persona_text", "prompt_text"])
         df_data.to_pickle(
             f"results/{args.model.split('/')[1]}_{args.persona_type}_results.pkl"
         )
