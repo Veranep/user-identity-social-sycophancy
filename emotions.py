@@ -27,6 +27,13 @@ if __name__ == "__main__":
         default="meta-llama/Llama-3.1-8B-Instruct",
         help="Model to evaluate",
     )
+    parser.add_argument(
+        "-t",
+        "--type",
+        type=str,
+        choices=["advice", "conv_history"],
+        help="Whether to evaluate emotions in LLM-generated advice or in the identity-conveying conversation history",
+    )
     args = parser.parse_args()
     emotions = {
         "admiration": [],
@@ -58,16 +65,31 @@ if __name__ == "__main__":
         "surprise": [],
         "neutral": [],
     }
-    if os.path.isfile(
-        f"results/{args.model.split('/')[-1]}_long_results_emotions.pkl"
-    ):
-        df = pd.read_pickle(
+    if args.type == "advice":
+        col = "model_answer"
+        save_file = (
             f"results/{args.model.split('/')[-1]}_long_results_emotions.pkl"
         )
+        if os.path.isfile(save_file):
+            df = pd.read_pickle(save_file)
+            results = True
+        else:
+            df = pd.read_pickle(
+                f"results/{args.model.split('/')[-1]}_long_results.pkl"
+            )
+            results = False
+
     else:
-        df = pd.read_pickle(
-            f"results/{args.model.split('/')[-1]}_long_results.pkl"
-        )
+        col = "content"
+        save_file = "data/base_data_persona_turns_emotions.gz"
+        if os.path.isfile(save_file):
+            df = pd.read_pickle(save_file)
+            results = True
+        else:
+            df = pd.read_pickle("data/base_data_persona_turns.gz")
+            results = False
+
+    if not results:
         emotion_classifier = pipeline(
             task="text-classification",
             model="AnasAlokla/multilingual_go_emotions_V1.2",
@@ -78,9 +100,7 @@ if __name__ == "__main__":
         results = [
             result
             for result in tqdm(
-                emotion_classifier(
-                    ListDataset(df["model_answer"].tolist()), batch_size=8
-                )
+                emotion_classifier(ListDataset(df[col].tolist()), batch_size=8)
             )
         ]
         for result in results:
@@ -88,42 +108,46 @@ if __name__ == "__main__":
                 emotions[e["label"]].append(e["score"])
         df_emotions = pd.DataFrame(emotions)
         df = pd.concat([df, df_emotions], axis=1)
-        df.to_pickle(
-            f"results/{args.model.split('/')[-1]}_long_results_emotions.pkl"
-        )
+        df.to_pickle(save_file)
 
-    for emotion in list(emotions.keys()):
-        values = []
-        for v in df["persona_type"].unique():
-            if pd.isna(v):
-                vals = 1 * (df.loc[df["persona_type"].isna(), emotion])
-            else:
-                vals = 1 * (df.loc[df["persona_type"] == v, emotion])
-            values.append(vals.tolist())
-        pvalue = f_oneway(*values).pvalue
-        if pvalue < 0.05:
-            print(emotion, "persona_type", tukey_hsd(*values))
-            print(
-                df.groupby("persona_type", dropna=False)[emotion]
-                .mean()
-                .sort_values()
-            )
-            print(
-                df.groupby("persona_text", dropna=False)[emotion]
-                .mean()
-                .sort_values()
-            )
-            p_ids = (
-                df.groupby("persona_id", dropna=False)[emotion]
-                .mean()
-                .sort_values()
-                .reset_index()
-            )
-            largest = p_ids.nlargest(5, emotion)["persona_id"].values
-            smallest = p_ids.nsmallest(5, emotion)["persona_id"].values
-            print("Largest:")
-            for p_id in largest:
-                print(df[df["persona_id"] == p_id]["persona_text"].unique())
-            print("Smallest:")
-            for p_id in smallest:
-                print(df[df["persona_id"] == p_id]["persona_text"].unique())
+    else:
+        for emotion in list(emotions.keys()):
+            values = []
+            for v in df["persona_type"].unique():
+                if pd.isna(v):
+                    vals = 1 * (df.loc[df["persona_type"].isna(), emotion])
+                else:
+                    vals = 1 * (df.loc[df["persona_type"] == v, emotion])
+                values.append(vals.tolist())
+            pvalue = f_oneway(*values).pvalue
+            if pvalue < 0.05:
+                print(emotion, "persona_type", tukey_hsd(*values))
+                print(
+                    df.groupby("persona_type", dropna=False)[emotion]
+                    .mean()
+                    .sort_values()
+                )
+                p_ids = (
+                    df.groupby("persona_id", dropna=False)[emotion]
+                    .mean()
+                    .sort_values()
+                    .reset_index()
+                )
+                largest = p_ids.nlargest(5, emotion)["persona_id"].values
+                smallest = p_ids.nsmallest(5, emotion)["persona_id"].values
+                print("Largest:")
+                for p_id in largest:
+                    print(
+                        df[df["persona_id"] == p_id]["persona_text"].unique()
+                    )
+                print("Smallest:")
+                for p_id in smallest:
+                    print(
+                        df[df["persona_id"] == p_id]["persona_text"].unique()
+                    )
+                if args.type == "advice":
+                    print(
+                        df.groupby("persona_text", dropna=False)[emotion]
+                        .mean()
+                        .sort_values()
+                    )

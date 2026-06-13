@@ -26,6 +26,77 @@ persona_types = [
 ]
 
 
+def get_persona_convo(string_convo):
+    string_convo = (
+        string_convo.strip()
+        .replace("\n", " ")
+        .replace('12"x12"', "12x12 inches")
+        .replace("\u00D7", "x")
+        .replace('1/2"', "1/2 inch")
+        .replace('1"x2"', "1x2 inches")
+        .replace('3/4"', "3/4 inch")
+        .replace('24"x8"', "24 x 8 inches")
+        .replace('4"', "4 inch")
+        .replace('12" x 8"', "12 x 8 inches")
+        .replace('"assistant":', '"assistant",')
+        .replace("\u2013", "-")
+        .replace("\u2014", "-")
+        .replace("\u2019", "'")
+        .replace('outcome‑focused): \\"I', "outcome‑focused): 'I")
+        .replace('design.\\" \\n\\nE', "design.' \\n\\nE")
+        .replace('skills): \\"I', "skills): 'I")
+        .replace('experience.\\" \\n\\nE', "experience.' \\n\\nE")
+        .replace('confident): \\"I combine', "confident): 'I combine")
+        .replace('projects.\\" \\n\\nOne', "projects.' \\n\\nOne")
+        .replace('tagline: \\"Artist', "tagline: 'Artist")
+        .replace(
+            'experiences.\\" \\n\\nLinkedIn',
+            "experiences.' \\n\\nLinkedIn",
+        )
+        .replace('paragraphs): \\"I', "paragraphs): 'I")
+        .replace('tech." \\n\\nDelivery', "tech.' \\n\\nDelivery")
+        .replace('more." This', "more.” This")
+        .split("  // Note:")[0]
+    )
+    if string_convo[-4:] == "]} ]":
+        string_convo = string_convo[:-4] + "}]"
+    elif string_convo[-4:] == "   ]":
+        string_convo = string_convo[:-4] + "}]"
+    if string_convo[-3:] != '"}]':
+        if string_convo[-1] == ".":
+            string_convo += '"}]'
+        elif string_convo[-3:] == '"]}':
+            string_convo = string_convo[:-3] + '"}]'
+        elif string_convo[-3:] == "} ]":
+            string_convo = string_convo[:-3] + "}]"
+        elif string_convo[-3:] == "]}]":
+            string_convo = string_convo[:-3] + "}]"
+        elif string_convo[-3:] == "}]}":
+            string_convo = string_convo[:-3] + "}]"
+        elif string_convo[-3:] == "}}]":
+            string_convo = string_convo[:-3] + "}]"
+        if string_convo[-3:] == ".}]":
+            string_convo = string_convo[:-3] + '."}]'
+        elif string_convo[-3:] == ".]}":
+            string_convo = string_convo[:-3] + '."}]'
+    persona_convo = eval(string_convo)
+    mod = 0
+    for t in range(len(persona_convo)):
+        if (
+            len(persona_convo) > 2
+            and persona_convo[t - mod]["role"] == "assistant"
+            and persona_convo[t - 1 - mod]["role"] == "assistant"
+        ):
+            persona_convo[t - 1 - mod]["content"] = (
+                persona_convo[t - 1 - mod]["content"]
+                + " "
+                + persona_convo[t - mod]["content"]
+            )
+            del persona_convo[t - mod]
+            mod += 1
+    return persona_convo
+
+
 class ListDataset(Dataset):
     def __init__(self, original_list):
         self.original_list = original_list
@@ -122,74 +193,7 @@ if __name__ == "__main__":
         final_convos_constrained = []
 
     for i in tqdm(range(len(df_data))):
-        string_convo = (
-            df_data.iloc[i]["persona_text"]
-            .strip()
-            .replace("\n", " ")
-            .replace('12"x12"', "12x12 inches")
-            .replace("\u00D7", "x")
-            .replace('1/2"', "1/2 inch")
-            .replace('1"x2"', "1x2 inches")
-            .replace('3/4"', "3/4 inch")
-            .replace('24"x8"', "24 x 8 inches")
-            .replace('4"', "4 inch")
-            .replace('12" x 8"', "12 x 8 inches")
-            .replace('"assistant":', '"assistant",')
-            .replace("\u2013", "-")
-            .replace("\u2014", "-")
-            .replace("\u2019", "'")
-            .replace('outcome‑focused): \\"I', "outcome‑focused): 'I")
-            .replace('design.\\" \\n\\nE', "design.' \\n\\nE")
-            .replace('skills): \\"I', "skills): 'I")
-            .replace('experience.\\" \\n\\nE', "experience.' \\n\\nE")
-            .replace('confident): \\"I combine', "confident): 'I combine")
-            .replace('projects.\\" \\n\\nOne', "projects.' \\n\\nOne")
-            .replace('tagline: \\"Artist', "tagline: 'Artist")
-            .replace(
-                'experiences.\\" \\n\\nLinkedIn',
-                "experiences.' \\n\\nLinkedIn",
-            )
-            .replace('paragraphs): \\"I', "paragraphs): 'I")
-            .replace('tech." \\n\\nDelivery', "tech.' \\n\\nDelivery")
-            .replace('more." This', "more.” This")
-            .split("  // Note:")[0]
-        )
-        if string_convo[-4:] == "]} ]":
-            string_convo = string_convo[:-4] + "}]"
-        elif string_convo[-4:] == "   ]":
-            string_convo = string_convo[:-4] + "}]"
-        if string_convo[-3:] != '"}]':
-            if string_convo[-1] == ".":
-                string_convo += '"}]'
-            elif string_convo[-3:] == '"]}':
-                string_convo = string_convo[:-3] + '"}]'
-            elif string_convo[-3:] == "} ]":
-                string_convo = string_convo[:-3] + "}]"
-            elif string_convo[-3:] == "]}]":
-                string_convo = string_convo[:-3] + "}]"
-            elif string_convo[-3:] == "}]}":
-                string_convo = string_convo[:-3] + "}]"
-            elif string_convo[-3:] == "}}]":
-                string_convo = string_convo[:-3] + "}]"
-            if string_convo[-3:] == ".}]":
-                string_convo = string_convo[:-3] + '."}]'
-            elif string_convo[-3:] == ".]}":
-                string_convo = string_convo[:-3] + '."}]'
-        persona_convo = eval(string_convo)
-        mod = 0
-        for t in range(len(persona_convo)):
-            if (
-                len(persona_convo) > 2
-                and persona_convo[t - mod]["role"] == "assistant"
-                and persona_convo[t - 1 - mod]["role"] == "assistant"
-            ):
-                persona_convo[t - 1 - mod]["content"] = (
-                    persona_convo[t - 1 - mod]["content"]
-                    + " "
-                    + persona_convo[t - mod]["content"]
-                )
-                del persona_convo[t - mod]
-                mod += 1
+        persona_convo = get_persona_convo(df_data.iloc[i]["persona_text"])
         if args.long:
             final_convos.append(
                 tokenizer.apply_chat_template(
