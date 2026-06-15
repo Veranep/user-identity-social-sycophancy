@@ -264,8 +264,6 @@ if __name__ == "__main__":
         )
 
     if "model_answer" not in df_data and args.long:
-        if not model.tokenizer.pad_token_id:
-            model.tokenizer.pad_token_id = model.tokenizer.eos_token_id
         model = pipeline(
             "text-generation",
             model=model,
@@ -273,6 +271,8 @@ if __name__ == "__main__":
             torch_dtype=torch.bfloat16,
             device_map="auto",
         )
+        if not model.tokenizer.pad_token_id:
+            model.tokenizer.pad_token_id = model.tokenizer.eos_token_id
         df_data["model_answer"] = [
             answer[0]["generated_text"]
             for answer in tqdm(
