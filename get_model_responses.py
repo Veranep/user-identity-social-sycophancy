@@ -186,6 +186,11 @@ if __name__ == "__main__":
         df_data = df_data.loc[df_data["persona_id"].isin(ids)].reset_index(
             drop=True
         )
+        prompt_ids = df_data["prompt_id"].unique().tolist()
+        included_prompt_ids = prompt_ids[:100]
+        df_data = df_data.loc[
+            df_data["prompt_id"].isin(included_prompt_ids)
+        ].reset_index(drop=True)
 
     if args.long:
         final_convos = []
