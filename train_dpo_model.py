@@ -55,6 +55,9 @@ if __name__ == "__main__":
     ds = ds.map(preprocess_function)
     print(ds)
 
+    del df
+    del train_df
+
     trainer = DPOTrainer(
         model="meta-llama/Llama-3.1-8B-Instruct",
         train_dataset=ds,
