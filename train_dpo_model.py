@@ -1,4 +1,7 @@
+import argparse
 from datasets import Dataset
+from huggingface_hub import login
+import numpy as np
 import pandas as pd
 
 from trl import DPOTrainer
@@ -13,6 +16,17 @@ def preprocess_function(example):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-token",
+        type=str,
+        default="",
+        help="Huggingface token that grants access to Llama model",
+    )
+    args = parser.parse_args()
+    if args.token:
+        login(args.token)
+    np.random.seed(42)
     train_df = pd.DataFrame([])
     for file_name, dimension in [
         ("train_ev_aita.csv", "ev"),
