@@ -65,8 +65,7 @@ if __name__ == "__main__":
     config = DPOConfig(save_strategy="no")
 
     trainer = DPOTrainer(
-        model="meta-llama/Llama-3.1-8B-Instruct",
-        train_dataset=ds,
+        model="meta-llama/Llama-3.1-8B-Instruct", train_dataset=ds, args=config
     )
     trainer.train()
     trainer.save_model("results/dpo_model")
