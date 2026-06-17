@@ -104,7 +104,7 @@ if __name__ == "__main__":
         del df_personas
 
     vectorizer = TfidfVectorizer(
-        min_df=5, max_df=0.5, stop_words="english", sublinear_tf=True
+        min_df=5, max_df=0.3, stop_words="english", sublinear_tf=True
     )
     X = vectorizer.fit_transform(tqdm(df["persona_text"].tolist()))
     feature_names = vectorizer.get_feature_names_out()
@@ -222,11 +222,11 @@ if __name__ == "__main__":
         plt.tight_layout(rect=[0, 0, 1, 0.93])
 
         plt.savefig(
-            f"figures/{args.model.split('/')[-1]}_{target_col}_tfidf.png",
+            f"figures/{args.model.split('/')[-1]}_{target_col}_rare_tfidf.png",
             dpi=150,
             bbox_inches="tight",
         )
         plt.show()
         print(
-            f"Plot saved to figures/{args.model.split('/')[-1]}_{target_col}_tfidf.png"
+            f"Plot saved to figures/{args.model.split('/')[-1]}_{target_col}_rare_tfidf.png"
         )
