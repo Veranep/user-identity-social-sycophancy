@@ -4,6 +4,10 @@ from huggingface_hub import login
 import numpy as np
 import pandas as pd
 
+import torch
+
+torch.backends.cuda.enable_cudnn_sdp(False)
+
 from trl import DPOTrainer
 
 
