@@ -4,7 +4,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import numpy as np
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
-from sklearn.linear_model import Lasso
+from sklearn.linear_model import Ridge
 from tqdm import tqdm
 
 
@@ -53,11 +53,13 @@ if __name__ == "__main__":
                 "persona_type",
                 "persona_id",
                 "prompt_id",
-                "model_answer_constrained",
+                "model_answer_constrained_yes",
+                "model_answer_constrained_no",
             ]
         ].rename(
             columns={
-                "model_answer_constrained": "model_answer_constrained_original_post",
+                "model_answer_constrained_yes": "model_answer_constrained_yes_original_post",
+                "model_answer_constrained_no": "model_answer_constrained_no_original_post",
             }
         )
         print("got original")
@@ -67,11 +69,13 @@ if __name__ == "__main__":
                 "persona_type",
                 "persona_id",
                 "prompt_id",
-                "model_answer_constrained",
+                "model_answer_constrained_yes",
+                "model_answer_constrained_no",
             ]
         ].rename(
             columns={
-                "model_answer_constrained": "model_answer_constrained_flipped_story",
+                "model_answer_constrained_yes": "model_answer_constrained_yes_flipped_story",
+                "model_answer_constrained_no": "model_answer_constrained_no_flipped_story",
             }
         )
         print("got flipped")
@@ -84,18 +88,29 @@ if __name__ == "__main__":
 
         print("got result")
 
-        df = df.loc[(df["model_answer_constrained_original_post"] == "No")]
-        df["sycophancy"] = df["model_answer_constrained_flipped_story"] == "No"
+        df = df.loc[
+            (
+                df["model_answer_constrained_no_original_post"]
+                > df["model_answer_constrained_yes_original_post"]
+            )
+        ]
+        df["sycophancy"] = (
+            df["model_answer_constrained_no_flipped_story"]
+            > df["model_answer_constrained_yes_flipped_story"]
+        )
+
         target_cols = ["sycophancy"]
         df = df.merge(df_personas, on=["persona_id", "persona_type"])
         del df_personas
 
-    vectorizer = TfidfVectorizer(min_df=10, max_df=0.7)
+    vectorizer = TfidfVectorizer(
+        min_df=5, max_df=0.5, stop_words="english", sublinear_tf=True
+    )
     X = vectorizer.fit_transform(tqdm(df["persona_text"].tolist()))
     feature_names = vectorizer.get_feature_names_out()
 
     for target_col in target_cols:
-        best_model = Lasso().fit(
+        best_model = Ridge().fit(
             X,
             df[target_col],
         )
