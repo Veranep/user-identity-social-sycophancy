@@ -8,7 +8,7 @@ import torch
 
 torch.backends.cuda.enable_cudnn_sdp(False)
 
-from trl import DPOTrainer
+from trl import DPOTrainer, DPOConfig
 
 
 def preprocess_function(example):
@@ -61,6 +61,8 @@ if __name__ == "__main__":
 
     del df
     del train_df
+
+    config = DPOConfig(save_strategy="no")
 
     trainer = DPOTrainer(
         model="meta-llama/Llama-3.1-8B-Instruct",
