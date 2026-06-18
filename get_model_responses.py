@@ -291,7 +291,7 @@ if __name__ == "__main__":
                 total=len(final_convos),
             )
         ]
-
+        df_data = df_data.drop(columns=["persona_text", "prompt_text"])
         df_data.to_pickle(
             f"results/{args.model.split('/')[1]}_{args.persona_type}_long_results.pkl"
         )
