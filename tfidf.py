@@ -4,9 +4,9 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import numpy as np
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
-from sklearn.linear_model import RidgeCV
+from sklearn.linear_model import LinearRegression
 from tqdm import tqdm
-
+import nltk
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -19,6 +19,12 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--long", action="store_true", help="Whether to have long replies"
+    )
+    parser.add_argument(
+        "--nouns", action="store_true", help="Whether to only include nouns"
+    )
+    parser.add_argument(
+        "--rare", action="store_true", help="Whether to restrict TFIDF"
     )
     args = parser.parse_args()
 
@@ -103,14 +109,37 @@ if __name__ == "__main__":
         df = df.merge(df_personas, on=["persona_id", "persona_type"])
         del df_personas
 
-    vectorizer = TfidfVectorizer(
-        min_df=5, max_df=0.3, stop_words="english", sublinear_tf=True
-    )
-    X = vectorizer.fit_transform(tqdm(df["persona_text"].tolist()))
+    if args.rare:
+        vectorizer = TfidfVectorizer(
+            min_df=5,
+            max_df=0.5,
+            stop_words="english" if not args.nouns else None,
+        )
+    else:
+        vectorizer = TfidfVectorizer(
+            stop_words="english" if not args.nouns else None,
+        )
+    if args.nouns:
+        is_noun = lambda pos: pos[:2] == "NN"
+        inp = [
+            " ".join(
+                [
+                    word
+                    for (word, pos) in nltk.pos_tag(nltk.word_tokenize(text))
+                    if is_noun(pos)
+                ]
+            )
+            for text in tqdm(df["persona_text"].tolist())
+        ]
+
+    else:
+        inp = df["persona_text"].tolist()
+
+    X = vectorizer.fit_transform(tqdm(inp))
     feature_names = vectorizer.get_feature_names_out()
 
     for target_col in target_cols:
-        best_model = RidgeCV().fit(
+        best_model = LinearRegression.fit(
             X,
             df[target_col],
         )
@@ -222,11 +251,11 @@ if __name__ == "__main__":
         plt.tight_layout(rect=[0, 0, 1, 0.93])
 
         plt.savefig(
-            f"figures/{args.model.split('/')[-1]}_{target_col}_rare_tfidf.png",
+            f"figures/{args.model.split('/')[-1]}_{target_col}{'_rare' if args.rare else ''}{'_nouns' if args.nouns else ''}_rare_tfidf.png",
             dpi=150,
             bbox_inches="tight",
         )
         plt.show()
         print(
-            f"Plot saved to figures/{args.model.split('/')[-1]}_{target_col}_rare_tfidf.png"
+            f"Plot saved to figures/{args.model.split('/')[-1]}_{target_col}{'_rare' if args.rare else ''}{'_nouns' if args.nouns else ''}_tfidf.png"
         )
