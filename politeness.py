@@ -1,0 +1,116 @@
+import argparse
+import os
+import pandas as pd
+from scipy.stats import f_oneway, tukey_hsd
+from tqdm import tqdm
+from transformers import pipeline
+from torch.utils.data import Dataset
+
+
+class ListDataset(Dataset):
+    def __init__(self, original_list):
+        self.original_list = original_list
+
+    def __len__(self):
+        return len(self.original_list)
+
+    def __getitem__(self, i):
+        return self.original_list[i]
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-m",
+        "--model",
+        type=str,
+        default="meta-llama/Llama-3.1-8B-Instruct",
+        help="Model to evaluate",
+    )
+    parser.add_argument(
+        "-t",
+        "--type",
+        type=str,
+        choices=["advice", "conv_history"],
+        help="Whether to evaluate politeness in LLM-generated advice or in the identity-conveying conversation history",
+    )
+    args = parser.parse_args()
+    if args.type == "advice":
+        col = "model_answer"
+        save_file = (
+            f"results/{args.model.split('/')[-1]}_long_results_politeness.pkl"
+        )
+        if os.path.isfile(save_file):
+            df = pd.read_pickle(save_file)
+            results = True
+        else:
+            df = pd.read_pickle(
+                f"results/{args.model.split('/')[-1]}_long_results.pkl"
+            )
+            results = False
+
+    else:
+        col = "content"
+        save_file = "data/base_data_persona_turns_politeness.gz"
+        if os.path.isfile(save_file):
+            df = pd.read_pickle(save_file)
+            results = True
+        else:
+            df = pd.read_pickle("data/base_data_persona_turns.gz")
+            results = False
+
+    if not results:
+        politeness_classifier = pipeline(
+            "text-classification",
+            "Intel/polite-guard",
+            max_length=512,
+            truncation=True,
+        )
+        results = [
+            result["label"]
+            for result in tqdm(
+                politeness_classifier(
+                    ListDataset(df[col].tolist()), batch_size=16
+                )
+            )
+        ]
+        df["politeness"] = results
+        df.to_pickle(save_file)
+
+    else:
+
+        values = []
+        for v in df["persona_type"].unique():
+            if pd.isna(v):
+                vals = 1 * (df.loc[df["persona_type"].isna(), "politeness"])
+            else:
+                vals = 1 * (df.loc[df["persona_type"] == v, "politeness"])
+            values.append(vals.tolist())
+        pvalue = f_oneway(*values).pvalue
+        if pvalue < 0.05:
+            print("politeness", "persona_type", tukey_hsd(*values))
+            print(
+                df.groupby("persona_type", dropna=False)["politeness"]
+                .mean()
+                .sort_values()
+            )
+            p_ids = (
+                df.groupby("persona_id", dropna=False)["politeness"]
+                .mean()
+                .sort_values()
+                .reset_index()
+            )
+            largest = p_ids.nlargest(5, "politeness")["persona_id"].values
+            smallest = p_ids.nsmallest(5, "politeness")["persona_id"].values
+            print("Largest:")
+            for p_id in largest:
+                print(df[df["persona_id"] == p_id]["persona_text"].unique())
+            print("Smallest:")
+            for p_id in smallest:
+                print(df[df["persona_id"] == p_id]["persona_text"].unique())
+            if args.type == "advice":
+                print(
+                    df.groupby("persona_text", dropna=False)["politeness"]
+                    .mean()
+                    .sort_values()
+                )

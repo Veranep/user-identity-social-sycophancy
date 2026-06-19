@@ -46,7 +46,7 @@ if __name__ == "__main__":
             results = False
 
     if not results:
-        liwc = Liwc("/opt/liwc-22/bin/LIWC-22-cli")
+        liwc = Liwc("/opt/liwc-22/bin/LIWC-22-cli", verbose=True)
         liwc_dict = "LIWC22"
         df = pd.concat(
             [
