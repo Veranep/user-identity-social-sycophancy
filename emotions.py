@@ -101,7 +101,7 @@ if __name__ == "__main__":
             result
             for result in tqdm(
                 emotion_classifier(
-                    ListDataset(df[col].tolist()), batch_size=16
+                    ListDataset(df[col].tolist()), batch_size=32
                 )
             )
         ]

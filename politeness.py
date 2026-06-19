@@ -70,7 +70,7 @@ if __name__ == "__main__":
             result["label"]
             for result in tqdm(
                 politeness_classifier(
-                    ListDataset(df[col].tolist()), batch_size=16
+                    ListDataset(df[col].tolist()), batch_size=32
                 )
             )
         ]
