@@ -265,7 +265,7 @@ if __name__ == "__main__":
 
         df_data = df_data.drop(columns=["persona_text", "prompt_text"])
         df_data.to_pickle(
-            f"results/{args.model.split('/')[1]}_{args.persona_type}_results.pkl"
+            f"results/{args.model.split('/')[-1]}_{args.persona_type}_results.pkl"
         )
 
     if "model_answer" not in df_data and args.long:
@@ -293,5 +293,5 @@ if __name__ == "__main__":
         ]
         df_data = df_data.drop(columns=["persona_text", "prompt_text"])
         df_data.to_pickle(
-            f"results/{args.model.split('/')[1]}_{args.persona_type}_long_results.pkl"
+            f"results/{args.model.split('/')[-1]}_{args.persona_type}_long_results.pkl"
         )
