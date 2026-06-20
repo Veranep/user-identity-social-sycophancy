@@ -120,6 +120,7 @@ if __name__ == "__main__":
             stop_words="english" if not args.nouns else None,
         )
     if args.nouns:
+        nltk.download("averaged_perceptron_tagger_eng")
         is_noun = lambda pos: pos[:2] == "NN"
         inp = [
             " ".join(
@@ -139,7 +140,7 @@ if __name__ == "__main__":
     feature_names = vectorizer.get_feature_names_out()
 
     for target_col in target_cols:
-        best_model = LinearRegression.fit(
+        best_model = LinearRegression().fit(
             X,
             df[target_col],
         )
