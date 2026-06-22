@@ -49,8 +49,8 @@ if __name__ == "__main__":
         df = pd.read_csv("dpo/" + file_name, index_col=0)[needed_cols]
         df = df.rename(
             columns={
-                "response_0": "chosen",
-                "response_1": "rejected",
+                "response_0": "rejected",
+                "response_1": "chosen",
             },
             errors="ignore",
         )
