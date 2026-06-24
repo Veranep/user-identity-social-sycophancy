@@ -44,6 +44,9 @@ if __name__ == "__main__":
         if os.path.isfile(save_file):
             df = pd.read_pickle(save_file)
             results = True
+            df_personas = pd.read_pickle("data/base_data_persona.gz")
+            df = df.merge(df_personas, on=["persona_id", "persona_type"])
+            del df_personas
         else:
             df = pd.read_pickle(
                 f"results/{args.model.split('/')[-1]}_long_results.pkl"
@@ -85,7 +88,7 @@ if __name__ == "__main__":
         df.to_pickle(save_file)
 
     else:
-        for sentiment in list(sentiment.keys()):
+        for sentiment in list(sentiments.keys()):
             values = []
             for v in df["persona_type"].unique():
                 if pd.isna(v):
@@ -101,27 +104,58 @@ if __name__ == "__main__":
                     .mean()
                     .sort_values()
                 )
-                p_ids = (
-                    df.groupby("persona_id", dropna=False)[sentiment]
-                    .mean()
-                    .sort_values()
-                    .reset_index()
-                )
-                largest = p_ids.nlargest(5, sentiment)["persona_id"].values
-                smallest = p_ids.nsmallest(5, sentiment)["persona_id"].values
-                print("Largest:")
-                for p_id in largest:
-                    print(
-                        df[df["persona_id"] == p_id]["persona_text"].unique()
-                    )
-                print("Smallest:")
-                for p_id in smallest:
-                    print(
-                        df[df["persona_id"] == p_id]["persona_text"].unique()
-                    )
+                # p_ids = (
+                #     df.groupby("persona_id", dropna=False)[sentiment]
+                #     .mean()
+                #     .sort_values()
+                #     .reset_index()
+                # )
+                # largest = p_ids.nlargest(5, sentiment)["persona_id"].values
+                # smallest = p_ids.nsmallest(5, sentiment)["persona_id"].values
+                # print("Largest:")
+                # for p_id in largest:
+                #     print(
+                #         df[df["persona_id"] == p_id]["persona_text"].unique()
+                #     )
+                # print("Smallest:")
+                # for p_id in smallest:
+                #     print(
+                #         df[df["persona_id"] == p_id]["persona_text"].unique()
+                #     )
                 if args.type == "advice":
                     print(
                         df.groupby("persona_text", dropna=False)[sentiment]
                         .mean()
                         .sort_values()
                     )
+                    df_prompts = pd.read_pickle("data/base_data_prompt.gz")
+                    print(
+                        df_prompts.loc[
+                            (df_prompts["prompt_id"] == "cs336v")
+                            & (df_prompts["prompt_type"] == "flipped_story")
+                        ]["prompt_text"].values
+                    )
+                    print(
+                        df.loc[
+                            (df["prompt_id"] == "cs336v")
+                            & (df["prompt_type"] == "flipped_story")
+                        ]
+                        .groupby(
+                            ["model_answer", "persona_text"], dropna=False
+                        )[sentiment]
+                        .mean()
+                        .sort_values()
+                    )
+                    # print(
+                    #     df.groupby(
+                    #         [
+                    #             "persona_text",
+                    #             "prompt_id",
+                    #             "prompt_type",
+                    #             "model_answer",
+                    #         ],
+                    #         dropna=False,
+                    #     )[sentiment]
+                    #     .mean()
+                    #     .sort_values()
+                    # )

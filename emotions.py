@@ -73,6 +73,9 @@ if __name__ == "__main__":
         if os.path.isfile(save_file):
             df = pd.read_pickle(save_file)
             results = True
+            df_personas = pd.read_pickle("data/base_data_persona.gz")
+            df = df.merge(df_personas, on=["persona_id", "persona_type"])
+            del df_personas
         else:
             df = pd.read_pickle(
                 f"results/{args.model.split('/')[-1]}_long_results.pkl"
@@ -129,24 +132,24 @@ if __name__ == "__main__":
                     .mean()
                     .sort_values()
                 )
-                p_ids = (
-                    df.groupby("persona_id", dropna=False)[emotion]
-                    .mean()
-                    .sort_values()
-                    .reset_index()
-                )
-                largest = p_ids.nlargest(5, emotion)["persona_id"].values
-                smallest = p_ids.nsmallest(5, emotion)["persona_id"].values
-                print("Largest:")
-                for p_id in largest:
-                    print(
-                        df[df["persona_id"] == p_id]["persona_text"].unique()
-                    )
-                print("Smallest:")
-                for p_id in smallest:
-                    print(
-                        df[df["persona_id"] == p_id]["persona_text"].unique()
-                    )
+                # p_ids = (
+                #     df.groupby("persona_id", dropna=False)[emotion]
+                #     .mean()
+                #     .sort_values()
+                #     .reset_index()
+                # )
+                # largest = p_ids.nlargest(5, emotion)["persona_id"].values
+                # smallest = p_ids.nsmallest(5, emotion)["persona_id"].values
+                # print("Largest:")
+                # for p_id in largest:
+                #     print(
+                #         df[df["persona_id"] == p_id]["persona_text"].unique()
+                #     )
+                # print("Smallest:")
+                # for p_id in smallest:
+                #     print(
+                #         df[df["persona_id"] == p_id]["persona_text"].unique()
+                #     )
                 if args.type == "advice":
                     print(
                         df.groupby("persona_text", dropna=False)[emotion]
