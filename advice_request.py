@@ -3,7 +3,9 @@ import json
 import os
 from openai import OpenAI
 import pandas as pd
+import numpy as np
 from tqdm import tqdm
+import spacy
 
 # client = OpenAI(
 #     # This is the default and can be omitted
@@ -23,6 +25,7 @@ if __name__ == "__main__":
 
     # prompt_old = """Please rewrite the following request for advice such that it no longer uses framing specific to the AITA subreddit. This includes replacing abbreviations like 'AITA' or 'WIBTA' and removing explicit declarations of gender and age like '(F25)'. Otherwise preserve the content of the advice request. Request: {text}"""
     prompt = """Please rewrite the following request for advice such that it no longer uses framing specific to the AITA subreddit. This includes replacing abbreviations like 'AITA' or 'WIBTA', removing any "TLDR", "Update:" or "EDIT" sections, removing any references to comments or responses, and removing explicit declarations of gender and age in brackets like '(F25)'. Do not start with 'Request:', 'Request for advice:' or 'Advice request:'. Otherwise preserve the content of the advice request. Request: {text}"""
+    nlp = spacy.load("en_core_web_sm")
     df = pd.read_csv("data/AITA-NTA-FLIP.csv")
     texts = []
     for i in range(len(df)):
@@ -42,8 +45,10 @@ if __name__ == "__main__":
             ][0]["message"]["content"]
             for o in output
         }
-        if args.verbose:
-            for i in range(len(texts)):
+        overlap = []
+        for i in tqdm(range(len(texts))):
+            if args.verbose:
+
                 print(texts[i])
                 print(
                     "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
@@ -52,6 +57,17 @@ if __name__ == "__main__":
                 print(
                     "-----------------------------------------------------------------------------"
                 )
+            text_tokens = set([t.text.lower() for t in nlp(texts[i])])
+            advice_tokens = set([t.text.lower() for t in nlp(output[i])])
+
+            overlap.append(
+                len(text_tokens.intersection(advice_tokens))
+                / len(text_tokens)
+                * 100
+            )
+
+        print(np.mean(overlap))
+
         idx = 0
         for i in range(len(df)):
             for prompt_type in ["original_post", "flipped_story"]:
