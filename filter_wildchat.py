@@ -1,6 +1,7 @@
 import argparse
 from datasets import load_dataset
 from huggingface_hub import login
+import pickle
 from tqdm import tqdm
 
 if __name__ == "__main__":
@@ -37,5 +38,7 @@ if __name__ == "__main__":
 
         if len(career) == 100 and len(creative) == 100:
             break
-    print(career[:5])
-    print(creative[:5])
+    with open("data/wildchat_career.pkl", "wb") as outfile:
+        pickle.dump(career, outfile)
+    with open("data/wildchat_creative.pkl", "wb") as outfile:
+        pickle.dump(creative, outfile)

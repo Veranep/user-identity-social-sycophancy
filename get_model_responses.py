@@ -146,8 +146,6 @@ if __name__ == "__main__":
     device = model.device
 
     df = pd.read_pickle("data/aita-nta-flip_rewritten_2000.gz")
-    n = 200
-    df_personas = pd.read_pickle(f"data/personas_{n}_ch.gz")
     data = {
         "persona_type": [],
         "persona_id": [],
@@ -156,24 +154,43 @@ if __name__ == "__main__":
         "prompt_id": [],
         "prompt_text": [],
     }
-    for i in tqdm(range(len(df))):
-        for prompt_type in ["original_post", "flipped_story"]:
-            for j in tqdm(range(len(df_personas))):
-                data["persona_type"].append(args.persona_type)
-                data["persona_id"].append(df_personas.iloc[j]["uuid"])
-                data["persona_text"].append(
-                    df_personas.iloc[j][args.persona_type]
-                )
-                data["prompt_type"].append(prompt_type)
-                data["prompt_id"].append(df.iloc[i]["id"])
-                data["prompt_text"].append(df.iloc[i][prompt_type])
-            if args.persona_type == "hobbies":
-                data["persona_type"].append(None)
-                data["persona_id"].append(None)
-                data["persona_text"].append("[]")
-                data["prompt_type"].append(prompt_type)
-                data["prompt_id"].append(df.iloc[i]["id"])
-                data["prompt_text"].append(df.iloc[i][prompt_type])
+    if args.persona_type not in ["career", "creative"]:
+        n = 200
+        df_personas = pd.read_pickle(f"data/personas_{n}_ch.gz")
+        for i in tqdm(range(len(df))):
+            for prompt_type in ["original_post", "flipped_story"]:
+                for j in tqdm(range(len(df_personas))):
+                    data["persona_type"].append(args.persona_type)
+                    data["persona_id"].append(df_personas.iloc[j]["uuid"])
+                    data["persona_text"].append(
+                        df_personas.iloc[j][args.persona_type]
+                    )
+                    data["prompt_type"].append(prompt_type)
+                    data["prompt_id"].append(df.iloc[i]["id"])
+                    data["prompt_text"].append(df.iloc[i][prompt_type])
+                if args.persona_type == "hobbies":
+                    data["persona_type"].append(None)
+                    data["persona_id"].append(None)
+                    data["persona_text"].append("[]")
+                    data["prompt_type"].append(prompt_type)
+                    data["prompt_id"].append(df.iloc[i]["id"])
+                    data["prompt_text"].append(df.iloc[i][prompt_type])
+    else:
+        if args.persona_type == "career":
+            with open("data/wildchat_career.pkl", "rb") as infile:
+                persona_text = pickle.load(infile)
+        else:
+            with open("data/wildchat_creative.pkl", "rb") as infile:
+                persona_text = pickle.load(infile)
+        for i in tqdm(range(len(df))):
+            for prompt_type in ["original_post", "flipped_story"]:
+                for j in tqdm(range(len(persona_text))):
+                    data["persona_type"].append(args.persona_type)
+                    data["persona_id"].append(j)
+                    data["persona_text"].append(persona_text[j])
+                    data["prompt_type"].append(prompt_type)
+                    data["prompt_id"].append(df.iloc[i]["id"])
+                    data["prompt_text"].append(df.iloc[i][prompt_type])
 
     df_data = pd.DataFrame(data)
     print(df_data)
@@ -198,7 +215,11 @@ if __name__ == "__main__":
         final_convos_constrained = []
 
     for i in tqdm(range(len(df_data))):
-        persona_convo = get_persona_convo(df_data.iloc[i]["persona_text"])
+        persona_convo = (
+            get_persona_convo(df_data.iloc[i]["persona_text"])
+            if args.persona_type not in ["career", "creative"]
+            else df_data.iloc[i]["persona_text"]
+        )
         if args.long:
             final_convos.append(
                 tokenizer.apply_chat_template(
