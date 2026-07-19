@@ -155,6 +155,18 @@ feature_cols = {
     ],
     "sentiment": ["negative", "s_neutral", "positive"],
     "politeness": ["politeness"],
+    "social_dimensions": [
+        "social_support",
+        "similarity",
+        "romance",
+        "respect",
+        "power",
+        "knowledge",
+        "identity",
+        "fun",
+        "conflict",
+        "trust",
+    ],
 }
 
 if __name__ == "__main__":
