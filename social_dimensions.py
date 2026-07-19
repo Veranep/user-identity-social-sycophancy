@@ -79,12 +79,15 @@ if __name__ == "__main__":
                 model=f"Blablablab/10dimensions-{d}",
                 max_length=512,
                 truncation=True,
+                top_k=None,
             )
             results = [
-                result
+                r["score"]
                 for result in tqdm(
                     classifier(ListDataset(df[col].tolist()), batch_size=32)
                 )
+                for r in result
+                if r["label"] == "positive"
             ]
             social_dimensions[d] = results
         df_social_dimensions = pd.DataFrame(social_dimensions)
