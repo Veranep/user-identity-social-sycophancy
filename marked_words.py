@@ -270,10 +270,14 @@ if __name__ == "__main__":
         top_words = marked_words(
             original_nta.iloc[:200], original_nta.iloc[-200:], original_nta
         )
+        top_words = sorted(top_words, key=lambda x: x[1])[::-1]
         print("Least sycophantic:")
         print([t[0] for t in top_words])
+        print([t for t in top_words])
         top_words = marked_words(
             original_nta.iloc[-200:], original_nta.iloc[:200], original_nta
         )
+        top_words = sorted(top_words, key=lambda x: x[1])[::-1]
         print("Most sycophantic:")
         print([t[0] for t in top_words])
+        print([t for t in top_words])
