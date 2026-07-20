@@ -104,10 +104,31 @@ if __name__ == "__main__":
         default="meta-llama/Llama-3.1-8B-Instruct",
         help="Model to evaluate",
     )
+    parser.add_argument(
+        "--wc",
+        action="store_true",
+        help="Whether to concatenate wildchat or regular results",
+    )
     args = parser.parse_args()
 
-    df = pd.read_pickle(f"results/{args.model.split('/')[-1]}_results.pkl")
-    df_personas = pd.read_pickle("data/base_data_persona.gz")
+    df = pd.read_pickle(
+        f"results/{args.model.split('/')[-1]}_{'wc_' if args.wc else ''}results.pkl"
+    )
+    if args.wc:
+        with open("data/wildchat_career.pkl", "rb") as infile:
+            career = pickle.load(infile)
+        with open("data/wildchat_creative.pkl", "rb") as infile:
+            creative = pickle.load(infile)
+        data = {
+            "persona_type": ["career"] * len(career)
+            + ["creative"] * len(creative),
+            "persona_id": list(range(len(career)))
+            + list(range(len(creative))),
+            "persona_text": [c[0]["content"] for c in career + creative],
+        }
+        df_personas = pd.DataFrame(data)
+    else:
+        df_personas = pd.read_pickle("data/base_data_persona.gz")
 
     original = df[df["prompt_type"] == "original_post"][
         [
@@ -151,6 +172,7 @@ if __name__ == "__main__":
 
     ids = compute_sycophancy(result, df_personas)
     with open(
-        f"data/ids_long_eval_{args.model.split('/')[-1]}.pkl", "wb"
+        f"data/ids_long_eval_{args.model.split('/')[-1]}{'_wc' if args.wc else ''}.pkl",
+        "wb",
     ) as outfile:
         pickle.dump(ids, outfile)

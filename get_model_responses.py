@@ -12,19 +12,6 @@ import torch.nn.functional as F
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
-persona_types = [
-    "hobbies",
-    "motivation",
-    "recognition",
-    "life_story",
-    "crossroads",
-    "family",
-    "influence",
-    "setback",
-    "politics",
-    "assumptions",
-]
-
 
 def get_persona_convo(string_convo):
     string_convo = (

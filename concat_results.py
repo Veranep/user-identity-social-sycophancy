@@ -7,7 +7,7 @@ import pandas as pd
 import pickle
 from tqdm import tqdm
 
-from get_model_responses import persona_types
+from utils import persona_types, wc_persona_types
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -21,9 +21,15 @@ if __name__ == "__main__":
     parser.add_argument(
         "--long", action="store_true", help="Whether to have long replies"
     )
+    parser.add_argument(
+        "--wc",
+        action="store_true",
+        help="Whether to concatenate wildchat or regular results",
+    )
     args = parser.parse_args()
     df = pd.DataFrame([])
-    for persona_type in tqdm(persona_types):
+    pts = wc_persona_types if args.wc else persona_types
+    for persona_type in tqdm(pts):
         if not os.path.isfile(
             f"results/{args.model.split('/')[-1]}_{persona_type}_{'long_' if args.long else ''}results.pkl"
         ):
@@ -41,5 +47,5 @@ if __name__ == "__main__":
 
         df = pd.concat([df, df_pt], ignore_index=True)
     df.to_pickle(
-        f"results/{args.model.split('/')[-1]}_{'long_' if args.long else ''}results.pkl"
+        f"results/{args.model.split('/')[-1]}_{'wc_' if args.wc else ''}{'long_' if args.long else ''}results.pkl"
     )
