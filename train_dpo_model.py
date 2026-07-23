@@ -22,6 +22,13 @@ def preprocess_function(example):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        "-m",
+        "--model",
+        type=str,
+        default="meta-llama/Llama-3.1-8B-Instruct",
+        help="Model to evaluate",
+    )
+    parser.add_argument(
         "-token",
         type=str,
         default="",
@@ -64,8 +71,6 @@ if __name__ == "__main__":
 
     config = DPOConfig(save_strategy="no")
 
-    trainer = DPOTrainer(
-        model="meta-llama/Llama-3.1-8B-Instruct", train_dataset=ds, args=config
-    )
+    trainer = DPOTrainer(model=args.model, train_dataset=ds, args=config)
     trainer.train()
-    trainer.save_model("results/dpo_model")
+    trainer.save_model(f"results/dpo_model_{args.model.split('/')[-1]}")
