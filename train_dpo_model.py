@@ -1,6 +1,5 @@
-import argparse
+# import argparse
 from datasets import Dataset
-from huggingface_hub import login
 import numpy as np
 import pandas as pd
 
@@ -20,23 +19,16 @@ def preprocess_function(example):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-m",
-        "--model",
-        type=str,
-        default="meta-llama/Llama-3.1-8B-Instruct",
-        help="Model to evaluate",
-    )
-    parser.add_argument(
-        "-token",
-        type=str,
-        default="",
-        help="Huggingface token that grants access to Llama model",
-    )
-    args = parser.parse_args()
-    if args.token:
-        login(args.token)
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument(
+    #     "-m",
+    #     "--model",
+    #     type=str,
+    #     default="meta-llama/Llama-3.1-8B-Instruct",
+    #     help="Model to evaluate",
+    # )
+    # args = parser.parse_args()
+    model_name = "google/gemma-3-12b-it"
     np.random.seed(42)
     train_df = pd.DataFrame([])
     for file_name, dimension in [
@@ -71,6 +63,6 @@ if __name__ == "__main__":
 
     config = DPOConfig(save_strategy="no")
 
-    trainer = DPOTrainer(model=args.model, train_dataset=ds, args=config)
+    trainer = DPOTrainer(model=model_name, train_dataset=ds, args=config)
     trainer.train()
-    trainer.save_model(f"results/dpo_model_{args.model.split('/')[-1]}")
+    trainer.save_model(f"results/dpo_model_{model_name.split('/')[-1]}")
