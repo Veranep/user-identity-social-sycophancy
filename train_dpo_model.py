@@ -8,6 +8,15 @@ import torch
 torch.backends.cuda.enable_cudnn_sdp(False)
 
 from trl import DPOTrainer, DPOConfig
+from peft import LoraConfig
+
+peft_config = LoraConfig(
+    r=16,
+    lora_alpha=32,
+    lora_dropout=0.05,
+    target_modules="all-linear",
+    task_type="CAUSAL_LM",
+)
 
 
 def preprocess_function(example):
@@ -63,6 +72,11 @@ if __name__ == "__main__":
 
     config = DPOConfig(save_strategy="no")
 
-    trainer = DPOTrainer(model=model_name, train_dataset=ds, args=config)
+    trainer = DPOTrainer(
+        model=model_name,
+        train_dataset=ds,
+        args=config,
+        peft_config=peft_config,
+    )
     trainer.train()
     trainer.save_model(f"results/dpo_model_{model_name.split('/')[-1]}")
