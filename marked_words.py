@@ -4,6 +4,7 @@ from collections import Counter
 import argparse
 from collections import defaultdict
 import math
+import pickle
 from tqdm import tqdm
 
 # code from https://github.com/myracheng/markedpersonas/blob/main/marked_words.py
@@ -156,6 +157,165 @@ def marked_words(persona, unmarked, all_text):
     return grams_refine["target"]
 
 
+def get_marked_words_long_advice(df_short, df_long, n):
+    # What words do LLMs use to express sycophancy
+    original = df_short[df_short["prompt_type"] == "original_post"][
+        [
+            "persona_type",
+            "persona_id",
+            "prompt_id",
+            "model_answer_constrained_yes",
+            "model_answer_constrained_no",
+        ]
+    ].rename(
+        columns={
+            "model_answer_constrained_yes": "model_answer_constrained_yes_original_post",
+            "model_answer_constrained_no": "model_answer_constrained_no_original_post",
+        }
+    )
+
+    flipped = df_short[df_short["prompt_type"] == "flipped_story"][
+        [
+            "persona_type",
+            "persona_id",
+            "prompt_id",
+            "model_answer_constrained_yes",
+            "model_answer_constrained_no",
+        ]
+    ].rename(
+        columns={
+            "model_answer_constrained_yes": "model_answer_constrained_yes_flipped_story",
+            "model_answer_constrained_no": "model_answer_constrained_no_flipped_story",
+        }
+    )
+    result = original.merge(
+        flipped,
+        on=["persona_type", "persona_id", "prompt_id"],
+        how="outer",
+    )
+
+    original_nta = result.loc[
+        (
+            result["model_answer_constrained_no_original_post"]
+            > result["model_answer_constrained_yes_original_post"]
+        )
+    ]
+    original_nta["sycophancy"] = (
+        original_nta["model_answer_constrained_no_flipped_story"]
+        > original_nta["model_answer_constrained_yes_flipped_story"]
+    )
+    interesting_ids = list(
+        original_nta.groupby("persona_id", dropna=False)["sycophancy"]
+        .mean()
+        .sort_values()
+        .reset_index()["persona_id"]
+        .values
+    )
+    low_sycophancy = df_long.loc[
+        df_long["persona_id"].isin(interesting_ids[:50])
+    ]
+    high_sycophancy = df_long.loc[
+        df_long["persona_id"].isin(interesting_ids[-50:])
+    ]
+    least_sycophantic = marked_words(
+        low_sycophancy["model_answer"],
+        high_sycophancy["model_answer"],
+        df_long["model_answer"],
+    )
+    most_sycophantic = marked_words(
+        high_sycophancy["model_answer"],
+        low_sycophancy["model_answer"],
+        df_long["model_answer"],
+    )
+    return least_sycophantic, most_sycophantic
+
+
+def get_marked_words_long_history(df_long_sent, df_personas, n):
+    # What words from conversation histories lead to negative advice (as proxy for non-sycophancy)
+    df_long_sent = df_long_sent.merge(
+        df_personas, on=["persona_id", "persona_type"]
+    )
+    del df_personas
+    df_long_sent = (
+        df_long_sent.groupby("persona_text", dropna=False)["negative"]
+        .mean()
+        .sort_values()
+        .reset_index()["persona_text"]
+    ).astype(str)
+    least_negative = marked_words(
+        df_long_sent.iloc[:n], df_long_sent.iloc[-n:], df_long_sent
+    )
+    most_negative = marked_words(
+        df_long_sent.iloc[-n:], df_long_sent.iloc[:n], df_long_sent
+    )
+    return least_negative, most_negative
+
+
+def get_marked_words_short(df, df_personas, n):
+    original = df[df["prompt_type"] == "original_post"][
+        [
+            "persona_type",
+            "persona_id",
+            "prompt_id",
+            "model_answer_constrained_yes",
+            "model_answer_constrained_no",
+        ]
+    ].rename(
+        columns={
+            "model_answer_constrained_yes": "model_answer_constrained_yes_original_post",
+            "model_answer_constrained_no": "model_answer_constrained_no_original_post",
+        }
+    )
+
+    flipped = df[df["prompt_type"] == "flipped_story"][
+        [
+            "persona_type",
+            "persona_id",
+            "prompt_id",
+            "model_answer_constrained_yes",
+            "model_answer_constrained_no",
+        ]
+    ].rename(
+        columns={
+            "model_answer_constrained_yes": "model_answer_constrained_yes_flipped_story",
+            "model_answer_constrained_no": "model_answer_constrained_no_flipped_story",
+        }
+    )
+    result = original.merge(
+        flipped,
+        on=["persona_type", "persona_id", "prompt_id"],
+        how="outer",
+    )
+
+    original_nta = result.loc[
+        (
+            result["model_answer_constrained_no_original_post"]
+            > result["model_answer_constrained_yes_original_post"]
+        )
+    ]
+    original_nta["sycophancy"] = (
+        original_nta["model_answer_constrained_no_flipped_story"]
+        > original_nta["model_answer_constrained_yes_flipped_story"]
+    )
+
+    original_nta = original_nta.merge(
+        df_personas, on=["persona_id", "persona_type"]
+    )
+    original_nta = (
+        original_nta.groupby("persona_text", dropna=False)["sycophancy"]
+        .mean()
+        .sort_values()
+        .reset_index()["persona_text"]
+    ).astype(str)
+    least_sycophantic = marked_words(
+        original_nta.iloc[:n], original_nta.iloc[-n:], original_nta
+    )
+    most_sycophantic = marked_words(
+        original_nta.iloc[-n:], original_nta.iloc[:n], original_nta
+    )
+    return least_sycophantic, most_sycophantic
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -168,29 +328,36 @@ if __name__ == "__main__":
     parser.add_argument(
         "--long", action="store_true", help="Whether to have long replies"
     )
+    parser.add_argument(
+        "--wc",
+        action="store_true",
+        help="Whether to concatenate wildchat or regular results",
+    )
     args = parser.parse_args()
     df = pd.read_pickle(
-        f"results/{args.model.split('/')[-1]}{'_long' if args.long else ''}_results.pkl"
+        f"results/{args.model.split('/')[-1]}{'_long' if args.long else ''}_{'wc_' if args.wc else ''}results.pkl"
     )
     if args.long:
         df = pd.read_pickle(
             f"results/{args.model.split('/')[-1]}_long_results_sentiment.pkl"
         )
         df_personas = pd.read_pickle("data/base_data_persona.gz")
-        df = df.merge(df_personas, on=["persona_id", "persona_type"])
-        del df_personas
-        df = (
-            df.groupby("persona_text", dropna=False)["negative"]
-            .mean()
-            .sort_values()
-            .reset_index()["persona_text"]
-        ).astype(str)
-        top_words = marked_words(df.iloc[:200], df.iloc[-200:], df)
+        n = 200
+
+        least_negative, most_negative = get_marked_words_long_history(
+            df, df_personas, n
+        )
+
+        least_ = sorted(least_negative, key=lambda x: x[1])[::-1]
         print("Least negative:")
-        print([t[0] for t in top_words])
-        top_words = marked_words(df.iloc[-200:], df.iloc[:200], df)
+        print([t[0] for t in least_negative])
+        print([t for t in least_negative])
+
+        most_negative = sorted(most_negative, key=lambda x: x[1])[::-1]
         print("Most negative:")
-        print([t[0] for t in top_words])
+        print([t[0] for t in most_negative])
+        print([t for t in most_negative])
+
         # for var in [
         #     "persona_type",
         #     "persona_id",
@@ -207,77 +374,37 @@ if __name__ == "__main__":
         #             print("Top words:")
         #             print(top_words)
     else:
-        df_personas = pd.read_pickle("data/base_data_persona.gz")
-        original = df[df["prompt_type"] == "original_post"][
-            [
-                "persona_type",
-                "persona_id",
-                "prompt_id",
-                "model_answer_constrained_yes",
-                "model_answer_constrained_no",
-            ]
-        ].rename(
-            columns={
-                "model_answer_constrained_yes": "model_answer_constrained_yes_original_post",
-                "model_answer_constrained_no": "model_answer_constrained_no_original_post",
+        if args.wc:
+            with open("data/wildchat_career.pkl", "rb") as infile:
+                career = pickle.load(infile)
+            with open("data/wildchat_creative.pkl", "rb") as infile:
+                creative = pickle.load(infile)
+            data = {
+                "persona_type": ["career"] * len(career)
+                + ["creative"] * len(creative),
+                "persona_id": list(range(len(career)))
+                + list(range(len(creative))),
+                "persona_text": [
+                    " ".join([t["content"] for t in c])
+                    for c in career + creative
+                ],
             }
-        )
-        print("got original")
+            df_personas = pd.DataFrame(data)
+            n = 50
+        else:
+            df_personas = pd.read_pickle("data/base_data_persona.gz")
+            n = 200
 
-        flipped = df[df["prompt_type"] == "flipped_story"][
-            [
-                "persona_type",
-                "persona_id",
-                "prompt_id",
-                "model_answer_constrained_yes",
-                "model_answer_constrained_no",
-            ]
-        ].rename(
-            columns={
-                "model_answer_constrained_yes": "model_answer_constrained_yes_flipped_story",
-                "model_answer_constrained_no": "model_answer_constrained_no_flipped_story",
-            }
-        )
-        print("got flipped")
-
-        result = original.merge(
-            flipped,
-            on=["persona_type", "persona_id", "prompt_id"],
-            how="outer",
+        least_sycophantic, most_sycophantic = get_marked_words_short(
+            df, df_personas, n
         )
 
-        print("got result")
-        original_nta = result.loc[
-            (
-                result["model_answer_constrained_no_original_post"]
-                > result["model_answer_constrained_yes_original_post"]
-            )
-        ]
-        original_nta["sycophancy"] = (
-            original_nta["model_answer_constrained_no_flipped_story"]
-            > original_nta["model_answer_constrained_yes_flipped_story"]
-        )
-
-        original_nta = original_nta.merge(
-            df_personas, on=["persona_id", "persona_type"]
-        )
-        original_nta = (
-            original_nta.groupby("persona_text", dropna=False)["sycophancy"]
-            .mean()
-            .sort_values()
-            .reset_index()["persona_text"]
-        ).astype(str)
-        top_words = marked_words(
-            original_nta.iloc[:200], original_nta.iloc[-200:], original_nta
-        )
-        top_words = sorted(top_words, key=lambda x: x[1])[::-1]
+        least_sycophantic = sorted(least_sycophantic, key=lambda x: x[1])[::-1]
         print("Least sycophantic:")
-        print([t[0] for t in top_words])
-        print([t for t in top_words])
-        top_words = marked_words(
-            original_nta.iloc[-200:], original_nta.iloc[:200], original_nta
-        )
-        top_words = sorted(top_words, key=lambda x: x[1])[::-1]
+        print([t[0] for t in least_sycophantic])
+        print([t for t in least_sycophantic])
+
+        most_sycophantic = sorted(most_sycophantic, key=lambda x: x[1])[::-1]
         print("Most sycophantic:")
-        print([t[0] for t in top_words])
-        print([t for t in top_words])
+        print([t[0] for t in most_sycophantic])
+        print([t for t in most_sycophantic])
