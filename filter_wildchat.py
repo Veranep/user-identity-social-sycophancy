@@ -1,4 +1,5 @@
 import argparse
+import ast
 from datasets import load_dataset
 from huggingface_hub import login
 import os
@@ -192,6 +193,13 @@ if __name__ == "__main__":
         df_creative = pd.DataFrame({"conversations": creative})
         df_creative.to_csv("data/wildchat_creative.csv")
 
+    if type(df_career["conversations"].tolist()[0]) == str:
+        df_career["conversations"] = df_career["conversations"].apply(
+            ast.literal_eval
+        )
+        df_creative["conversations"] = df_creative["conversations"].apply(
+            ast.literal_eval
+        )
     career = df_career["conversations"].tolist()
     creative = df_creative["conversations"].tolist()
 
