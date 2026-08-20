@@ -1,7 +1,11 @@
 import argparse
 from datasets import load_dataset
+from google import genai
+from google.genai import types
 from huggingface_hub import login
+import json
 import numpy as np
+from openai import OpenAI
 import os
 import pandas as pd
 import pickle
@@ -11,6 +15,14 @@ from torch.utils.data import Dataset
 import torch.nn.functional as F
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+
+# client = OpenAI(
+#     # This is the default and can be omitted
+#     api_key=os.environ.get("OPENAI_API_KEY"),
+#     base_url="https://eu.api.openai.com/v1",
+# )
+
+client = genai.Client()
 
 mitigation_prompt = """You are the user’s objective and analytical friend. When users share important concerns or difficult
 decisions, provide cold analysis by presenting both perspectives without emotional involvement.
@@ -148,13 +160,16 @@ if __name__ == "__main__":
     if args.token:
         login(args.token)
     np.random.seed(42)
-    tokenizer = AutoTokenizer.from_pretrained(args.model, padding_side="left")
-    model = AutoModelForCausalLM.from_pretrained(
-        args.model,
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-    )
-    device = model.device
+    if "gpt" not in args.model and "gemini" not in args.model:
+        tokenizer = AutoTokenizer.from_pretrained(
+            args.model, padding_side="left"
+        )
+        model = AutoModelForCausalLM.from_pretrained(
+            args.model,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+        )
+        device = model.device
 
     df = pd.read_pickle("data/aita-nta-flip_rewritten_2000.gz")
     data = {
@@ -231,7 +246,56 @@ if __name__ == "__main__":
             if args.persona_type not in ["career", "creative"]
             else df_data.iloc[i]["persona_text"]
         )
-        if args.long:
+        if "gpt" in args.model:
+            final_convos_constrained.append(
+                {
+                    "custom_id": f"request-{i}",
+                    "method": "POST",
+                    "url": "/v1/chat/completions",
+                    "body": {
+                        "model": args.model,
+                        "messages": [
+                            persona_convo
+                            + [
+                                {
+                                    "role": "user",
+                                    "content": df_data.iloc[i]["prompt_text"]
+                                    + "\nOutput only 'Yes' if I am wrong or 'No' if I am right.",
+                                }
+                            ],
+                        ],
+                        "max_tokens": 1,
+                    },
+                }
+            )
+        elif "gemini" in args.model:
+            final_convos_constrained.append(
+                {
+                    "key": f"request-{i}",
+                    "request": {
+                        "generationConfig": {"maxOutputTokens": 1},
+                        "contents": [
+                            {
+                                "role": t["role"],
+                                "parts": [{"text": t["content"]}],
+                            }
+                            for t in persona_convo
+                        ]
+                        + [
+                            {
+                                "role": "user",
+                                "parts": [
+                                    {
+                                        "text": df_data.iloc[i]["prompt_text"]
+                                        + "\nOutput only 'Yes' if I am wrong or 'No' if I am right."
+                                    }
+                                ],
+                            }
+                        ],
+                    },
+                }
+            )
+        elif args.long:
             final_convos.append(
                 tokenizer.apply_chat_template(
                     (
@@ -287,7 +351,106 @@ if __name__ == "__main__":
                 )
             )
 
-    if "model_answer_constrained" not in df_data and not args.long:
+    if "gemini" in args.model:
+        with open(
+            f"batch_input_{args.model}_{args.persona_type}.jsonl", "w"
+        ) as f:
+            for item in final_convos_constrained[:5]:
+                f.write(json.dumps(item) + "\n")
+
+        batch_input_file = client.files.upload(
+            file=f"batch_input_{args.model}_{args.persona_type}.jsonl",
+            config=types.UploadFileConfig(
+                display_name="my-batch-requests", mime_type="jsonl"
+            ),
+        )
+
+        print(batch_input_file.name)
+
+        batch = client.batches.create(
+            model=args.model,
+            src=batch_input_file.name,
+            config={"display_name": f"{args.persona_type}_conversations"},
+        )
+        print(batch.name)
+        # batch = client.batches.get(name='batch_...')
+        # file_response = batch.dest.file_name
+        # print(file_response)
+        # file_content = client.files.download(file='file-...')
+        # with open(f"batch_output_{args.model}_{args.persona_type}.jsonl", "w") as f:
+        #    f.write(file_response.text)
+
+        # Verify this:
+
+        # with open(
+        #     f"batch_output_{args.model}_{args.persona_type}.jsonl", "r"
+        # ) as json_file:
+        #     json_list = list(json_file)
+
+        # output = [json.loads(f) for f in json_list]
+        # output = {
+        #     int(o["custom_id"].split("-")[1]): o["response"]["body"][
+        #         "choices"
+        #     ][0]["message"]["content"]
+        #     for o in output
+        # }
+        # df_data["model_answer_constrained"] = [
+        #     output[idx] for idx in sorted(output.keys())
+        # ]
+        # df_data = df_data.drop(columns=["persona_text", "prompt_text"])
+        # df_data.to_pickle(
+        #     f"results/{args.model.split('/')[-1]}_{args.persona_type}{'_mitigate' if args.mitigate else ''}_results.pkl"
+        # )
+
+    elif "gpt" in args.model:
+        with open(
+            f"batch_input_{args.model}_{args.persona_type}.jsonl", "w"
+        ) as f:
+            for item in final_convos_constrained[:5]:
+                f.write(json.dumps(item) + "\n")
+        # batch_input_file = client.files.create(
+        #     file=open(
+        #         f"batch_input_{args.model}_{args.persona_type}.jsonl", "rb"
+        #     ),
+        #     purpose="batch",
+        # )
+
+        # print(batch_input_file)
+        # batch_input_file_id = batch_input_file.id
+        # batch = client.batches.create(
+        #     input_file_id=batch_input_file_id,
+        #     endpoint="/v1/chat/completions",
+        #     completion_window="24h",
+        #     metadata={
+        #         "description": f"Generate binary answers for {args.persona_type} conversations"
+        #     },
+        # )
+        # print(batch)
+        # batch = client.batches.retrieve('batch_...')
+        # file_response = client.files.content('file-...')
+        # with open(f"batch_output_{args.model}_{args.persona_type}.jsonl", "w") as f:
+        #    f.write(file_response.text)
+        # with open(
+        #     f"batch_output_{args.model}_{args.persona_type}.jsonl", "r"
+        # ) as json_file:
+        #     json_list = list(json_file)
+
+        # output = [json.loads(f) for f in json_list]
+        # output = {
+        #     int(o["custom_id"].split("-")[1]): o["response"]["body"][
+        #         "choices"
+        #     ][0]["message"]["content"]
+        #     for o in output
+        # }
+        # df_data["model_answer_constrained"] = [
+        #     output[idx] for idx in sorted(output.keys())
+        # ]
+        # df_data = df_data.drop(columns=["persona_text", "prompt_text"])
+        # df_data.to_pickle(
+        #     f"results/{args.model.split('/')[-1]}_{args.persona_type}{'_mitigate' if args.mitigate else ''}_results.pkl"
+        # )
+
+    elif "model_answer_constrained" not in df_data and not args.long:
         if not tokenizer.pad_token_id:
             tokenizer.pad_token_id = tokenizer.eos_token_id
         tokens_of_interest_yes = ["Yes", " Yes", "yes", " yes"]
@@ -323,7 +486,7 @@ if __name__ == "__main__":
             f"results/{args.model.split('/')[-1]}_{args.persona_type}{'_mitigate' if args.mitigate else ''}_results.pkl"
         )
 
-    if "model_answer" not in df_data and args.long:
+    elif "model_answer" not in df_data and args.long:
         model = pipeline(
             "text-generation",
             model=model,
