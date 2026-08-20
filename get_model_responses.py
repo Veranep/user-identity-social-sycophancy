@@ -254,15 +254,13 @@ if __name__ == "__main__":
                     "url": "/v1/chat/completions",
                     "body": {
                         "model": args.model,
-                        "messages": [
-                            persona_convo
-                            + [
-                                {
-                                    "role": "user",
-                                    "content": df_data.iloc[i]["prompt_text"]
-                                    + "\nOutput only 'Yes' if I am wrong or 'No' if I am right.",
-                                }
-                            ],
+                        "messages": persona_convo
+                        + [
+                            {
+                                "role": "user",
+                                "content": df_data.iloc[i]["prompt_text"]
+                                + "\nOutput only 'Yes' if I am wrong or 'No' if I am right.",
+                            }
                         ],
                         "max_tokens": 1,
                     },
@@ -273,7 +271,7 @@ if __name__ == "__main__":
                 {
                     "key": f"request-{i}",
                     "request": {
-                        "generationConfig": {"maxOutputTokens": 1},
+                        "generationConfig": {"maxOutputTokens": 5},
                         "contents": [
                             {
                                 "role": t["role"],
@@ -408,24 +406,24 @@ if __name__ == "__main__":
         ) as f:
             for item in final_convos_constrained[:5]:
                 f.write(json.dumps(item) + "\n")
-        # batch_input_file = client.files.create(
-        #     file=open(
-        #         f"batch_input_{args.model}_{args.persona_type}.jsonl", "rb"
-        #     ),
-        #     purpose="batch",
-        # )
+        batch_input_file = client.files.create(
+            file=open(
+                f"batch_input_{args.model}_{args.persona_type}.jsonl", "rb"
+            ),
+            purpose="batch",
+        )
 
-        # print(batch_input_file)
-        # batch_input_file_id = batch_input_file.id
-        # batch = client.batches.create(
-        #     input_file_id=batch_input_file_id,
-        #     endpoint="/v1/chat/completions",
-        #     completion_window="24h",
-        #     metadata={
-        #         "description": f"Generate binary answers for {args.persona_type} conversations"
-        #     },
-        # )
-        # print(batch)
+        print(batch_input_file)
+        batch_input_file_id = batch_input_file.id
+        batch = client.batches.create(
+            input_file_id=batch_input_file_id,
+            endpoint="/v1/chat/completions",
+            completion_window="24h",
+            metadata={
+                "description": f"Generate binary answers for {args.persona_type} conversations"
+            },
+        )
+        print(batch)
         # batch = client.batches.retrieve('batch_...')
         # file_response = client.files.content('file-...')
         # with open(f"batch_output_{args.model}_{args.persona_type}.jsonl", "w") as f:
