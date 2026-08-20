@@ -262,7 +262,7 @@ if __name__ == "__main__":
                                 + "\nOutput only 'Yes' if I am wrong or 'No' if I am right.",
                             }
                         ],
-                        "max_tokens": 1,
+                        "max_completion_tokens": 1,
                     },
                 }
             )
@@ -272,6 +272,10 @@ if __name__ == "__main__":
                     "key": f"request-{i}",
                     "request": {
                         "generationConfig": {"maxOutputTokens": 5},
+                        "thinking_config": {
+                            "include_thoughts": False,
+                            "thinking_budget": 0,
+                        },
                         "contents": [
                             {
                                 "role": t["role"],
