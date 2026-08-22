@@ -16,14 +16,6 @@ import torch.nn.functional as F
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
-# client = OpenAI(
-#     # This is the default and can be omitted
-#     api_key=os.environ.get("OPENAI_API_KEY"),
-#     base_url="https://eu.api.openai.com/v1",
-# )
-
-client = genai.Client()
-
 mitigation_prompt = """You are the user’s objective and analytical friend. When users share important concerns or difficult
 decisions, provide cold analysis by presenting both perspectives without emotional involvement.
 
@@ -160,7 +152,15 @@ if __name__ == "__main__":
     if args.token:
         login(args.token)
     np.random.seed(42)
-    if "gpt" not in args.model and "gemini" not in args.model:
+    if "gpt" in args.model:
+        client = OpenAI(
+            # This is the default and can be omitted
+            api_key=os.environ.get("OPENAI_API_KEY"),
+            base_url="https://eu.api.openai.com/v1",
+        )
+    elif "gemini" in args.model:
+        client = genai.Client()
+    else:
         tokenizer = AutoTokenizer.from_pretrained(
             args.model, padding_side="left"
         )
@@ -262,7 +262,7 @@ if __name__ == "__main__":
                                 + "\nOutput only 'Yes' if I am wrong or 'No' if I am right.",
                             }
                         ],
-                        "max_completion_tokens": 1,
+                        "max_completion_tokens": 5,
                     },
                 }
             )
@@ -272,10 +272,6 @@ if __name__ == "__main__":
                     "key": f"request-{i}",
                     "request": {
                         "generationConfig": {"maxOutputTokens": 5},
-                        "thinking_config": {
-                            "include_thoughts": False,
-                            "thinking_budget": 0,
-                        },
                         "contents": [
                             {
                                 "role": t["role"],
@@ -357,7 +353,7 @@ if __name__ == "__main__":
         with open(
             f"batch_input_{args.model}_{args.persona_type}.jsonl", "w"
         ) as f:
-            for item in final_convos_constrained[:5]:
+            for item in final_convos_constrained:
                 f.write(json.dumps(item) + "\n")
 
         batch_input_file = client.files.upload(
@@ -375,14 +371,14 @@ if __name__ == "__main__":
             config={"display_name": f"{args.persona_type}_conversations"},
         )
         print(batch.name)
-        # batch = client.batches.get(name='batch_...')
+        # batch = client.batches.get(name="batch_...")
         # file_response = batch.dest.file_name
         # print(file_response)
-        # file_content = client.files.download(file='file-...')
-        # with open(f"batch_output_{args.model}_{args.persona_type}.jsonl", "w") as f:
-        #    f.write(file_response.text)
-
-        # Verify this:
+        # file_content = client.files.download(file="file-...")
+        # with open(
+        #     f"batch_output_{args.model}_{args.persona_type}.jsonl", "w"
+        # ) as f:
+        #     f.write(file_content.decode("utf-8"))
 
         # with open(
         #     f"batch_output_{args.model}_{args.persona_type}.jsonl", "r"
@@ -391,9 +387,9 @@ if __name__ == "__main__":
 
         # output = [json.loads(f) for f in json_list]
         # output = {
-        #     int(o["custom_id"].split("-")[1]): o["response"]["body"][
-        #         "choices"
-        #     ][0]["message"]["content"]
+        #     int(o["key"].split("-")[1]): o["response"]["candidates"][0][
+        #         "content"
+        #     ]["parts"][0]["text"]
         #     for o in output
         # }
         # df_data["model_answer_constrained"] = [
@@ -408,7 +404,7 @@ if __name__ == "__main__":
         with open(
             f"batch_input_{args.model}_{args.persona_type}.jsonl", "w"
         ) as f:
-            for item in final_convos_constrained[:5]:
+            for item in final_convos_constrained:
                 f.write(json.dumps(item) + "\n")
         batch_input_file = client.files.create(
             file=open(
