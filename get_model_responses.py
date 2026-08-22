@@ -401,32 +401,49 @@ if __name__ == "__main__":
         # )
 
     elif "gpt" in args.model:
-        with open(
-            f"batch_input_{args.model}_{args.persona_type}.jsonl", "w"
-        ) as f:
-            for item in final_convos_constrained:
-                f.write(json.dumps(item) + "\n")
-        batch_input_file = client.files.create(
-            file=open(
-                f"batch_input_{args.model}_{args.persona_type}.jsonl", "rb"
-            ),
-            purpose="batch",
-        )
+        final_convos_constrained = [
+            final_convos_constrained[i : i + 8]
+            for i in range(0, len(final_convos_constrained), 8)
+        ]
+        for j in range(8):
+            with open(
+                f"batch_input_{args.model}_{args.persona_type}_{j}.jsonl", "w"
+            ) as f:
+                for item in final_convos_constrained[j]:
+                    f.write(json.dumps(item) + "\n")
+            batch_input_file = client.files.create(
+                file=open(
+                    f"batch_input_{args.model}_{args.persona_type}_{j}.jsonl",
+                    "rb",
+                ),
+                purpose="batch",
+            )
+            batch_input_file_id = batch_input_file.id
+            batch = client.batches.create(
+                input_file_id=batch_input_file_id,
+                endpoint="/v1/chat/completions",
+                completion_window="24h",
+                metadata={
+                    "description": f"Generate binary answers for {args.persona_type} conversations - part {j}"
+                },
+            )
+            print(j, " : ", batch)
 
-        print(batch_input_file)
-        batch_input_file_id = batch_input_file.id
-        batch = client.batches.create(
-            input_file_id=batch_input_file_id,
-            endpoint="/v1/chat/completions",
-            completion_window="24h",
-            metadata={
-                "description": f"Generate binary answers for {args.persona_type} conversations"
-            },
-        )
-        print(batch)
+        # result_file_names = {
+        #     0: "",
+        #     1: "",
+        #     2: "",
+        #     3: "",
+        #     4: "",
+        #     5: "",
+        #     6: "",
+        #     7: "",
+        # }
         # batch = client.batches.retrieve('batch_...')
-        # file_response = client.files.content('file-...')
-        # with open(f"batch_output_{args.model}_{args.persona_type}.jsonl", "w") as f:
+        # for j in result_file_name:
+        # file_response = client.files.content(result_file_name[j])
+        # mode = "w" if j == 0 else "a"
+        # with open(f"batch_output_{args.model}_{args.persona_type}.jsonl", mode) as f:
         #    f.write(file_response.text)
         # with open(
         #     f"batch_output_{args.model}_{args.persona_type}.jsonl", "r"
