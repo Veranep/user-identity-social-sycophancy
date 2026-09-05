@@ -124,7 +124,7 @@ if __name__ == "__main__":
         "-token",
         type=str,
         default="",
-        help="Huggingface token that grants access to Llama model",
+        help="Huggingface token that grants access to Wildchat dataset",
     )
     args = parser.parse_args()
     if os.path.isfile("data/wildchat_career_rewritten.csv"):
@@ -192,6 +192,44 @@ if __name__ == "__main__":
         df_career.to_csv("data/wildchat_career.csv")
         df_creative = pd.DataFrame({"conversations": creative})
         df_creative.to_csv("data/wildchat_creative.csv")
+
+    if not os.path.isfile("data/wildchat_random.csv"):
+        wildchat = load_dataset("liweijiang/infinite-chats-taxonomy")[
+            "train"
+        ].shuffle(seed=42)
+        col = "messages"
+        random = []
+        career = [eval(c) for c in df_career["conversations"].tolist()]
+        creative = [eval(c) for c in df_creative["conversations"].tolist()]
+        for i in tqdm(range(len(wildchat))):
+            text = wildchat[i][col][0]["content"].lower()
+            if any([e in text for e in exclude]) or text.split()[0] in [
+                "write",
+                "design",
+                "role",
+            ]:
+                continue
+            if (
+                wildchat[i][col][:10] in career
+                or wildchat[i][col][:10] in creative
+                or wildchat[i][col] in career
+                or wildchat[i][col] in creative
+            ):
+                continue
+
+            random.append(wildchat[i][col][:10])
+
+            if len(random) == 100:
+                break
+
+        df_random = pd.DataFrame({"conversations": random})
+        if type(df_random["conversations"].tolist()[0]) == str:
+            df_random["conversations"] = df_random["conversations"].apply(
+                ast.literal_eval
+            )
+        df_random.to_csv("data/wildchat_random.csv")
+        with open("data/wildchat_random.pkl", "wb") as outfile:
+            pickle.dump(df_random["conversations"].tolist(), outfile)
 
     if type(df_career["conversations"].tolist()[0]) == str:
         df_career["conversations"] = df_career["conversations"].apply(

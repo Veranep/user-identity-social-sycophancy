@@ -187,7 +187,7 @@ if __name__ == "__main__":
         "prompt_id": [],
         "prompt_text": [],
     }
-    if args.persona_type not in ["career", "creative"]:
+    if args.persona_type not in ["career", "creative", "random"]:
         n = 200
         df_personas = pd.read_pickle(f"data/personas_{n}_ch.gz")
         for i in tqdm(range(len(df))):
@@ -211,6 +211,9 @@ if __name__ == "__main__":
     else:
         if args.persona_type == "career":
             with open("data/wildchat_career.pkl", "rb") as infile:
+                persona_text = pickle.load(infile)
+        elif args.persona_type == "random":
+            with open("data/wildchat_random.pkl", "rb") as infile:
                 persona_text = pickle.load(infile)
         else:
             with open("data/wildchat_creative.pkl", "rb") as infile:
@@ -252,7 +255,7 @@ if __name__ == "__main__":
     for i in tqdm(range(len(df_data))):
         persona_convo = (
             get_persona_convo(df_data.iloc[i]["persona_text"])
-            if args.persona_type not in ["career", "creative"]
+            if args.persona_type not in ["career", "creative", "random"]
             else df_data.iloc[i]["persona_text"]
         )
         if "gpt" in args.model:
