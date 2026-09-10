@@ -227,6 +227,15 @@ if __name__ == "__main__":
                     data["prompt_type"].append(prompt_type)
                     data["prompt_id"].append(df.iloc[i]["id"])
                     data["prompt_text"].append(df.iloc[i][prompt_type])
+                if args.persona_type == "random" and (
+                    "gpt" in args.model or "gemini" in args.model
+                ):
+                    data["persona_type"].append(None)
+                    data["persona_id"].append(None)
+                    data["persona_text"].append("[]")
+                    data["prompt_type"].append(prompt_type)
+                    data["prompt_id"].append(df.iloc[i]["id"])
+                    data["prompt_text"].append(df.iloc[i][prompt_type])
 
     df_data = pd.DataFrame(data)
     print(df_data)
@@ -364,6 +373,7 @@ if __name__ == "__main__":
             )
 
     if "gemini" in args.model:
+        pass
         # with open(
         #     f"batch_input_{args.model}_{args.persona_type}.jsonl", "w"
         # ) as f:
@@ -394,27 +404,28 @@ if __name__ == "__main__":
         # ) as f:
         #     f.write(file_content.decode("utf-8"))
 
-        with open(
-            f"batch_output_{args.model}_{args.persona_type}.jsonl", "r"
-        ) as json_file:
-            json_list = list(json_file)
+        # with open(
+        #     f"batch_output_{args.model}_{args.persona_type}.jsonl", "r"
+        # ) as json_file:
+        #     json_list = list(json_file)
 
-        output = [json.loads(f) for f in json_list]
-        output = {
-            int(o["key"].split("-")[1]): o["response"]["candidates"][0][
-                "content"
-            ]["parts"][0]["text"]
-            for o in output
-        }
-        df_data["model_answer_constrained"] = [
-            output[idx] for idx in sorted(output.keys())
-        ]
-        df_data = df_data.drop(columns=["persona_text", "prompt_text"])
-        df_data.to_pickle(
-            f"results/{args.model.split('/')[-1]}_{args.persona_type}{'_mitigate' if args.mitigate else ''}_results.pkl"
-        )
+        # output = [json.loads(f) for f in json_list]
+        # output = {
+        #     int(o["key"].split("-")[1]): o["response"]["candidates"][0][
+        #         "content"
+        #     ]["parts"][0]["text"]
+        #     for o in output
+        # }
+        # df_data["model_answer_constrained"] = [
+        #     output[idx] for idx in sorted(output.keys())
+        # ]
+        # df_data = df_data.drop(columns=["persona_text", "prompt_text"])
+        # df_data.to_pickle(
+        #     f"results/{args.model.split('/')[-1]}_{args.persona_type}{'_mitigate' if args.mitigate else ''}_results.pkl"
+        # )
 
     elif "gpt" in args.model:
+        pass
         # final_convos_constrained = np.array_split(final_convos_constrained, 4)
         # for j in range(4):
         #     with open(
@@ -455,38 +466,38 @@ if __name__ == "__main__":
         #         f"batch_output_again_{args.model}_{args.persona_type}.jsonl", mode
         #     ) as f:
         #         f.write(file_response.text)
-        with open(
-            f"batch_output_again_{args.model}_{args.persona_type}.jsonl", "r"
-        ) as json_file:
-            json_list_new = list(json_file)
+        # with open(
+        #     f"batch_output_again_{args.model}_{args.persona_type}.jsonl", "r"
+        # ) as json_file:
+        #     json_list_new = list(json_file)
 
-        output_new = [json.loads(f) for f in json_list_new]
-        output_new = {
-            int(o["custom_id"].split("-")[1]): o["response"]["body"][
-                "choices"
-            ][0]["message"]["content"]
-            for o in output_new
-        }
-        with open(
-            f"batch_output_{args.model}_{args.persona_type}.jsonl", "r"
-        ) as json_file:
-            json_list = list(json_file)
+        # output_new = [json.loads(f) for f in json_list_new]
+        # output_new = {
+        #     int(o["custom_id"].split("-")[1]): o["response"]["body"][
+        #         "choices"
+        #     ][0]["message"]["content"]
+        #     for o in output_new
+        # }
+        # with open(
+        #     f"batch_output_{args.model}_{args.persona_type}.jsonl", "r"
+        # ) as json_file:
+        #     json_list = list(json_file)
 
-        output = [json.loads(f) for f in json_list]
-        output = {
-            int(o["custom_id"].split("-")[1]): o["response"]["body"][
-                "choices"
-            ][0]["message"]["content"]
-            for o in output
-        }
-        df_data["model_answer_constrained"] = [
-            output_new[idx] if idx in output_new else output[idx]
-            for idx in sorted(output.keys())
-        ]
-        df_data = df_data.drop(columns=["persona_text", "prompt_text"])
-        df_data.to_pickle(
-            f"results/{args.model.split('/')[-1]}_{args.persona_type}{'_mitigate' if args.mitigate else ''}_results.pkl"
-        )
+        # output = [json.loads(f) for f in json_list]
+        # output = {
+        #     int(o["custom_id"].split("-")[1]): o["response"]["body"][
+        #         "choices"
+        #     ][0]["message"]["content"]
+        #     for o in output
+        # }
+        # df_data["model_answer_constrained"] = [
+        #     output_new[idx] if idx in output_new else output[idx]
+        #     for idx in sorted(output.keys())
+        # ]
+        # df_data = df_data.drop(columns=["persona_text", "prompt_text"])
+        # df_data.to_pickle(
+        #     f"results/{args.model.split('/')[-1]}_{args.persona_type}{'_mitigate' if args.mitigate else ''}_results.pkl"
+        # )
 
     elif "model_answer_constrained" not in df_data and not args.long:
         if not tokenizer.pad_token_id:
