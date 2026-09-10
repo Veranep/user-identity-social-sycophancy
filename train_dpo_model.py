@@ -1,4 +1,4 @@
-# import argparse
+import argparse
 from datasets import Dataset
 import numpy as np
 import pandas as pd
@@ -8,15 +8,16 @@ import torch
 torch.backends.cuda.enable_cudnn_sdp(False)
 
 from trl import DPOTrainer, DPOConfig
-from peft import LoraConfig
 
-peft_config = LoraConfig(
-    r=16,
-    lora_alpha=32,
-    lora_dropout=0.05,
-    target_modules="all-linear",
-    task_type="CAUSAL_LM",
-)
+# from peft import LoraConfig
+
+# peft_config = LoraConfig(
+#     r=16,
+#     lora_alpha=32,
+#     lora_dropout=0.05,
+#     target_modules="all-linear",
+#     task_type="CAUSAL_LM",
+# )
 
 
 def preprocess_function(example):
@@ -28,16 +29,15 @@ def preprocess_function(example):
 
 
 if __name__ == "__main__":
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument(
-    #     "-m",
-    #     "--model",
-    #     type=str,
-    #     default="meta-llama/Llama-3.1-8B-Instruct",
-    #     help="Model to evaluate",
-    # )
-    # args = parser.parse_args()
-    model_name = "google/gemma-3-12b-it"
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-m",
+        "--model",
+        type=str,
+        default="meta-llama/Llama-3.1-8B-Instruct",
+        help="Model to evaluate",
+    )
+    args = parser.parse_args()
     np.random.seed(42)
     train_df = pd.DataFrame([])
     for file_name, dimension in [
@@ -73,10 +73,10 @@ if __name__ == "__main__":
     config = DPOConfig(save_strategy="no")
 
     trainer = DPOTrainer(
-        model=model_name,
+        model=args.model,
         train_dataset=ds,
         args=config,
-        peft_config=peft_config,
+        # peft_config=peft_config,
     )
     trainer.train()
-    trainer.save_model(f"results/dpo_model_{model_name.split('/')[-1]}")
+    trainer.save_model(f"results/dpo_model_{args.model.split('/')[-1]}")
