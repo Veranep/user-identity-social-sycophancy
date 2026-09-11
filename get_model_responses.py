@@ -165,8 +165,7 @@ if __name__ == "__main__":
         # )
         pass
     elif "gemini" in args.model:
-        # client = genai.Client()
-        pass
+        client = genai.Client()
     else:
         tokenizer = AutoTokenizer.from_pretrained(
             args.model, padding_side="left"
@@ -232,7 +231,7 @@ if __name__ == "__main__":
                 ):
                     data["persona_type"].append(None)
                     data["persona_id"].append(None)
-                    data["persona_text"].append("[]")
+                    data["persona_text"].append([])
                     data["prompt_type"].append(prompt_type)
                     data["prompt_id"].append(df.iloc[i]["id"])
                     data["prompt_text"].append(df.iloc[i][prompt_type])
@@ -373,28 +372,27 @@ if __name__ == "__main__":
             )
 
     if "gemini" in args.model:
-        pass
-        # with open(
-        #     f"batch_input_{args.model}_{args.persona_type}.jsonl", "w"
-        # ) as f:
-        #     for item in final_convos_constrained:
-        #         f.write(json.dumps(item) + "\n")
+        with open(
+            f"batch_input_{args.model}_{args.persona_type}.jsonl", "w"
+        ) as f:
+            for item in final_convos_constrained:
+                f.write(json.dumps(item) + "\n")
 
-        # batch_input_file = client.files.upload(
-        #     file=f"batch_input_{args.model}_{args.persona_type}.jsonl",
-        #     config=types.UploadFileConfig(
-        #         display_name="my-batch-requests", mime_type="jsonl"
-        #     ),
-        # )
+        batch_input_file = client.files.upload(
+            file=f"batch_input_{args.model}_{args.persona_type}.jsonl",
+            config=types.UploadFileConfig(
+                display_name="my-batch-requests", mime_type="jsonl"
+            ),
+        )
 
-        # print(batch_input_file.name)
+        print(batch_input_file.name)
 
-        # batch = client.batches.create(
-        #     model=args.model,
-        #     src=batch_input_file.name,
-        #     config={"display_name": f"{args.persona_type}_conversations"},
-        # )
-        # print(batch.name)
+        batch = client.batches.create(
+            model=args.model,
+            src=batch_input_file.name,
+            config={"display_name": f"{args.persona_type}_conversations"},
+        )
+        print(batch.name)
         # batch = client.batches.get(name="batch_...")
         # file_response = batch.dest.file_name
         # print(file_response)
