@@ -299,7 +299,7 @@ if __name__ == "__main__":
             f"{args.results_file_path}/{args.model.split('/')[1]}_{args.dim}_scores.pkl",
             "wb",
         ) as outfile:
-            pickle.dump(probes, outfile)
+            pickle.dump(scores, outfile)
 
     else:
         if args.token:
