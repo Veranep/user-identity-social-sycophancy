@@ -85,6 +85,7 @@ def train_regressors(
     print(last_layer)
     probes = {}
     scores = []
+
     for l in tqdm(range(0, last_layer)):
         X_train = [rep[l] for rep in train_representations]
         X_test = [rep[l] for rep in test_representations]
@@ -277,6 +278,11 @@ if __name__ == "__main__":
             "rb",
         ) as infile:
             test_representations = pickle.load(infile)
+
+        train_df = train_df.loc[~(train_df[f"{args.dim}_score"].isna())]
+        train_representations = train_representations[train_df.index]
+        test_df = test_df.loc[~(test_df[f"{args.dim}_score"].isna())]
+        test_representations = test_representations[test_df.index]
 
         probes, scores = train_regressors(
             train_representations,
