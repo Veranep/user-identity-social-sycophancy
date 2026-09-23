@@ -5,6 +5,7 @@ import numpy as np
 import pickle
 import pandas as pd
 from sklearn.linear_model import LinearRegression
+from sklearn.metrics import r2_score
 import torch
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -77,16 +78,21 @@ def get_convo_representations(df, tokenizer, model, device):
     return representations
 
 
-def train_regressors(representations, y):
-    last_layer = len(representations[0])
+def train_regressors(
+    train_representations, test_representations, y_train, y_test
+):
+    last_layer = len(train_representations[0])
     print(last_layer)
     probes = {}
+    scores = []
     for l in tqdm(range(0, last_layer)):
-        X = [rep[l] for rep in train_representations]
+        X_train = [rep[l] for rep in train_representations]
+        X_test = [rep[l] for rep in test_representations]
         clf = LinearRegression()
-        clf = clf.fit(X, y)
+        clf = clf.fit(X_train, y_train)
         probes[l] = clf
-    return probes
+        scores[l] = r2_score(y_test, clf.predict(X_test))
+    return probes, scores
 
 
 if __name__ == "__main__":
@@ -126,7 +132,10 @@ if __name__ == "__main__":
         "information_guidance",
         "tangible_support",
     ]:
-        df = pd.read_csv("data/train_llama70b_supporttypes.csv")[
+        train_df = pd.read_csv("data/train_llama70b_supporttypes.csv")[
+            ["user_text", f"{args.dim}_score"]
+        ]
+        test_df = pd.read_csv("data/test_llama70b_supporttypes.csv")[
             ["user_text", f"{args.dim}_score"]
         ]
         dataset = "supporttypes"
@@ -136,7 +145,10 @@ if __name__ == "__main__":
         "user_information_advantage",
         "objectivity_seeking",
     ]:
-        df = pd.read_csv("data/train_llama70b_4dims.csv")[
+        train_df = pd.read_csv("data/train_llama70b_4dims.csv")[
+            ["user_text", f"{args.dim}_score"]
+        ]
+        test_df = pd.read_csv("data/test_llama70b_4dims.csv")[
             ["user_text", f"{args.dim}_score"]
         ]
         dataset = "4dims"
@@ -251,20 +263,34 @@ if __name__ == "__main__":
         ) as outfile:
             pickle.dump(predictions, outfile)
     elif os.path.isfile(
-        f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_representations.pkl"
+        f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_train_representations.pkl"
     ):
 
         with open(
-            f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_representations.pkl",
+            f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_train_representations.pkl",
             "rb",
         ) as infile:
-            representations = pickle.load(infile)
+            train_representations = pickle.load(infile)
 
-        probes = train_regressors(
-            representations, df[f"{args.dim}_score"].tolist()
+        with open(
+            f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_test_representations.pkl",
+            "rb",
+        ) as infile:
+            test_representations = pickle.load(infile)
+
+        probes, scores = train_regressors(
+            train_representations,
+            test_representations,
+            train_df[f"{args.dim}_score"].tolist(),
+            test_df[f"{args.dim}_score"].tolist(),
         )
         with open(
             f"{args.results_file_path}/{args.model.split('/')[1]}_{args.dim}_probes.pkl",
+            "wb",
+        ) as outfile:
+            pickle.dump(probes, outfile)
+        with open(
+            f"{args.results_file_path}/{args.model.split('/')[1]}_{args.dim}_scores.pkl",
             "wb",
         ) as outfile:
             pickle.dump(probes, outfile)
@@ -279,15 +305,26 @@ if __name__ == "__main__":
             torch_dtype=torch.bfloat16,
             device_map="auto",
         )
-        representations = get_representations(
-            df, "user_text", tokenizer, model, device
+        train_representations = get_representations(
+            train_df, "user_text", tokenizer, model, device
         )
         with open(
-            f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_representations.pkl",
+            f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_train_representations.pkl",
             "wb",
         ) as outfile:
             pickle.dump(
-                representations,
+                train_representations,
+                outfile,
+            )
+        test_representations = get_representations(
+            test_df, "user_text", tokenizer, model, device
+        )
+        with open(
+            f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_test_representations.pkl",
+            "wb",
+        ) as outfile:
+            pickle.dump(
+                test_representations,
                 outfile,
             )
         print("got representations!")
