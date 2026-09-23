@@ -84,7 +84,7 @@ def train_regressors(
     last_layer = len(train_representations[0])
     print(last_layer)
     probes = {}
-    scores = []
+    scores = {}
 
     for l in tqdm(range(0, last_layer)):
         X_train = [rep[l] for rep in train_representations]
