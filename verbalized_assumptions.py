@@ -148,6 +148,7 @@ if __name__ == "__main__":
         df = pd.read_pickle(f"results/{args.model.split('/')[1]}_results.pkl")
 
         df_personas = pd.read_pickle("data/base_data_persona.gz")
+        df_prompts = pd.read_pickle("data/base_data_prompt.gz")
 
         original = df[df["prompt_type"] == "original_post"][
             [
@@ -197,7 +198,9 @@ if __name__ == "__main__":
         )
 
         df = df.merge(df_personas, on=["persona_id", "persona_type"])
+        print(df.shape)
         df = df.merge(df_prompts, how="outer", on=["prompt_id"])
+        print(df.shape)
 
         df = df.sort_values(by="sycophancy")
         least_sycophancy = df.iloc[:100]
