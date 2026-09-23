@@ -259,9 +259,9 @@ if __name__ == "__main__":
             least_test = [rep[layer] for rep in least_sycophancy_reps]
             most_test = [rep[layer] for rep in most_sycophancy_reps]
             random_test = [rep[layer] for rep in random_sycophancy_reps]
-            predictions["least"][layer] = probe(least_test)
-            predictions["most"][layer] = probe(most_test)
-            predictions["random"][layer] = probe(random_test)
+            predictions["least"][layer] = probe.predict(least_test)
+            predictions["most"][layer] = probe.predict(most_test)
+            predictions["random"][layer] = probe.predict(random_test)
         # get predictions
         with open(
             f"{args.results_file_path}/{args.model.split('/')[1]}_{args.dim}_predictions.pkl",
