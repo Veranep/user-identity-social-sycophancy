@@ -4,6 +4,7 @@ import os
 import numpy as np
 import pickle
 import pandas as pd
+import random
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
 import torch
@@ -224,28 +225,43 @@ if __name__ == "__main__":
 
         df = df.merge(df_personas, on=["persona_id", "persona_type"])
         print(df.shape)
-        df = df.merge(df_prompts, how="outer", on=["prompt_id"])
+        df = df.merge(df_prompts, how="outer", on=["prompt_id", "prompt_type"])
         print(df.shape)
 
         df = df.loc[~pd.isna(df["persona_type"])]
 
-        print(df, df.shape)
-
-        # select 100 random prompt texts
-        df = (
-            df.groupby("prompt_text")
+        # select 100 most and least histories
+        sorted_histories = df.sort_values(by="sycophancy")["prompt_text"]
+        least_sycophancy = sorted_histories.iloc[:100].tolist()
+        most_sycophancy = sorted_histories.iloc[-100:].tolist()
+        random_sycophancy = (
+            sorted_histories.iloc[100:-100]
             .sample(n=100, random_state=42)
-            .reset_index()
+            .tolist()
         )
 
-        print(df, df.shape)
+        random_prompts = random.sample(list(df["prompt_text"].unique()), 100)
 
-        # select 100 most and least histories
-        df = df.sort_values(by="sycophancy")
-        least_sycophancy = df.iloc[:100]
-        most_sycophancy = df.iloc[-100:]
-        random_sycophancy = df.iloc[100:-100].sample(n=100, random_state=42)
+        # select 100 random prompt texts
+        least_sycophancy = df[
+            df["prompt_text"].isin(random_prompts)
+            & df["persona_text"].isin(least_sycophancy)
+        ]
+        most_sycophancy = df[
+            df["prompt_text"].isin(random_prompts)
+            & df["persona_text"].isin(most_sycophancy)
+        ]
+        random_sycophancy = df[
+            df["prompt_text"].isin(random_prompts)
+            & df["persona_text"].isin(random_sycophancy)
+        ]
+
         del df, df_personas, df_prompts
+        print(
+            least_sycophancy.shape,
+            most_sycophancy.shape,
+            random_sycophancy.shape,
+        )
         # get representations
         if args.token:
             login(args.token)
