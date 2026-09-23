@@ -227,11 +227,10 @@ if __name__ == "__main__":
         df = df.merge(df_prompts, how="outer", on=["prompt_id"])
         print(df.shape)
 
-        print(df, df.dtypes)
+        df = df.loc[~pd.isna(df["persona_type"])]
 
         df = df.sort_values(by="sycophancy")
         least_sycophancy = df.iloc[:100]
-        print(least_sycophancy, least_sycophancy.dtypes)
         most_sycophancy = df.iloc[-100:]
         random_sycophancy = df.iloc[100:-100].sample(n=100, random_state=42)
         del df, df_personas, df_prompts
