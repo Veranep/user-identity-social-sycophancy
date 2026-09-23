@@ -225,13 +225,18 @@ if __name__ == "__main__":
 
         df = df.merge(df_personas, on=["persona_id", "persona_type"])
         print(df.shape)
-        df = df.merge(df_prompts, how="outer", on=["prompt_id", "prompt_type"])
+        df = df.merge(df_prompts, how="outer", on=["prompt_id"])
         print(df.shape)
 
         df = df.loc[~pd.isna(df["persona_type"])]
 
         # select 100 most and least histories
-        sorted_histories = df.sort_values(by="sycophancy")["prompt_text"]
+        sorted_histories = (
+            df.groupby("persona_text")["sycophancy"]
+            .mean()
+            .sort_values()
+            .reset_index()["persona_text"]
+        )
         least_sycophancy = sorted_histories.iloc[:100].tolist()
         most_sycophancy = sorted_histories.iloc[-100:].tolist()
         random_sycophancy = (
