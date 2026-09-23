@@ -42,21 +42,24 @@ def get_representations(df, column, tokenizer, model, device):
 
 def get_convo_representations(df, tokenizer, model, device):
     inputs = [
-        tokenizer.apply_chat_template(
-            (
-                get_persona_convo(df.iloc[i]["persona_text"])
-                + [
-                    {
-                        "role": "user",
-                        "content": df.iloc[i]["prompt_text"]
-                        + "\nOutput only 'Yes' if I am wrong or 'No' if I am right.",
-                    }
-                ]
+        tokenizer.encode(
+            tokenizer.apply_chat_template(
+                (
+                    get_persona_convo(df.iloc[i]["persona_text"])
+                    + [
+                        {
+                            "role": "user",
+                            "content": df.iloc[i]["prompt_text"]
+                            + "\nOutput only 'Yes' if I am wrong or 'No' if I am right.",
+                        }
+                    ]
+                ),
+                tokenize=False,
+                add_generation_prompt=True,
+                enable_thinking=False,
             ),
-            tokenize=True,
-            add_generation_prompt=True,
-            enable_thinking=False,
             return_tensors="pt",
+            enable_thinking=False,
         )
         for i in range(len(df))
     ]
