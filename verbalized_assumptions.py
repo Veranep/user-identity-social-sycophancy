@@ -111,6 +111,13 @@ if __name__ == "__main__":
         default="",
         help="Huggingface token that grants access to Llama model",
     )
+    parser.add_argument(
+        "-rfp",
+        "--results_file_path",
+        type=str,
+        default="",
+        help="Path to store probing results",
+    )
     args = parser.parse_args()
     if args.dim in [
         "emotional_support",
@@ -135,14 +142,14 @@ if __name__ == "__main__":
         dataset = "4dims"
 
     if os.path.isfile(
-        f"probing_results/{args.model.split('/')[1]}_{args.dim}_predictions.pkl"
+        f"{args.results_file_path}/{args.model.split('/')[1]}_{args.dim}_predictions.pkl"
     ):
         pass
     elif os.path.isfile(
-        f"probing_results/{args.model.split('/')[1]}_{args.dim}_probes.pkl"
+        f"{args.results_file_path}/{args.model.split('/')[1]}_{args.dim}_probes.pkl"
     ):
         with open(
-            f"probing_results/{args.model.split('/')[1]}_{args.dim}_probes.pkl",
+            f"{args.results_file_path}/{args.model.split('/')[1]}_{args.dim}_probes.pkl",
             "rb",
         ) as infile:
             probes = pickle.load(infile)
@@ -239,16 +246,16 @@ if __name__ == "__main__":
             predictions["random"][layer] = probe(random_test)
         # get predictions
         with open(
-            f"probing_results/{args.model.split('/')[1]}_{args.dim}_predictions.pkl",
+            f"{args.results_file_path}/{args.model.split('/')[1]}_{args.dim}_predictions.pkl",
             "wb",
         ) as outfile:
             pickle.dump(predictions, outfile)
     elif os.path.isfile(
-        f"probing_results/{args.model.split('/')[1]}_{dataset}_representations.pkl"
+        f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_representations.pkl"
     ):
 
         with open(
-            f"probing_results/{args.model.split('/')[1]}_{dataset}_representations.pkl",
+            f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_representations.pkl",
             "rb",
         ) as infile:
             representations = pickle.load(infile)
@@ -257,7 +264,7 @@ if __name__ == "__main__":
             representations, df[f"{args.dim}_score"].tolist()
         )
         with open(
-            f"probing_results/{args.model.split('/')[1]}_{args.dim}_probes.pkl",
+            f"{args.results_file_path}/{args.model.split('/')[1]}_{args.dim}_probes.pkl",
             "wb",
         ) as outfile:
             pickle.dump(probes, outfile)
@@ -276,7 +283,7 @@ if __name__ == "__main__":
             df, "user_text", tokenizer, model, device
         )
         with open(
-            f"results/{args.model.split('/')[1]}_{dataset}_representations.pkl",
+            f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_representations.pkl",
             "wb",
         ) as outfile:
             pickle.dump(
