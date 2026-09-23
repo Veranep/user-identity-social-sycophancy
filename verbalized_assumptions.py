@@ -229,12 +229,16 @@ if __name__ == "__main__":
 
         df = df.loc[~pd.isna(df["persona_type"])]
 
+        print(df, df.shape)
+
         # select 100 random prompt texts
         df = (
             df.groupby("prompt_text")
             .sample(n=100, random_state=42)
             .reset_index()
         )
+
+        print(df, df.shape)
 
         # select 100 most and least histories
         df = df.sort_values(by="sycophancy")
