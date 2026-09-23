@@ -122,6 +122,7 @@ if __name__ == "__main__":
         df = pd.read_csv("data/train_llama70b_supporttypes.csv")[
             ["user_text", f"{args.dim}_score"]
         ]
+        dataset = "supporttypes"
     elif args.dim in [
         "validation_seeking",
         "user_rightness",
@@ -131,6 +132,7 @@ if __name__ == "__main__":
         df = pd.read_csv("data/train_llama70b_4dims.csv")[
             ["user_text", f"{args.dim}_score"]
         ]
+        dataset = "4dims"
 
     if os.path.isfile(
         f"probing_results/{args.model.split('/')[1]}_{args.dim}_predictions.pkl"
@@ -242,11 +244,11 @@ if __name__ == "__main__":
         ) as outfile:
             pickle.dump(predictions, outfile)
     elif os.path.isfile(
-        f"probing_results/{args.model.split('/')[1]}_{args.dim}_representations.pkl"
+        f"probing_results/{args.model.split('/')[1]}_{dataset}_representations.pkl"
     ):
 
         with open(
-            f"probing_results/{args.model.split('/')[1]}_{args.dim}_representations.pkl",
+            f"probing_results/{args.model.split('/')[1]}_{dataset}_representations.pkl",
             "rb",
         ) as infile:
             representations = pickle.load(infile)
@@ -274,7 +276,7 @@ if __name__ == "__main__":
             df, "user_text", tokenizer, model, device
         )
         with open(
-            f"results/{args.model.split('/')[1]}_{args.dim}_representations.pkl",
+            f"results/{args.model.split('/')[1]}_{dataset}_representations.pkl",
             "wb",
         ) as outfile:
             pickle.dump(
