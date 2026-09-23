@@ -254,7 +254,7 @@ if __name__ == "__main__":
             random_sycophancy, tokenizer, model, device
         )
         predictions = {"least": {}, "most": {}, "random": {}}
-        for layer in least_sycophancy_reps[0]:
+        for layer in tqdm(range(0, len(least_sycophancy_reps[0]))):
             probe = probes[layer]
             least_test = [rep[layer] for rep in least_sycophancy_reps]
             most_test = [rep[layer] for rep in most_sycophancy_reps]
