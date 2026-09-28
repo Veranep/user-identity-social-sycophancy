@@ -41,44 +41,63 @@ def get_representations(df, column, tokenizer, model, device):
     return representations
 
 
-def get_convo_representations(df, tokenizer, model, device):
-    inputs = [
-        tokenizer.encode(
-            tokenizer.apply_chat_template(
-                (
-                    get_persona_convo(df.iloc[i]["persona_text"])
-                    + [
-                        {
-                            "role": "user",
-                            "content": df.iloc[i]["prompt_text"]
-                            + "\nOutput only 'Yes' if I am wrong or 'No' if I am right.",
-                        }
-                    ]
+def get_convo(persona_text, prompt_text, config):
+    persona_convo = get_persona_convo(persona_text)
+    if config == 1:
+        return [persona_convo[0]]
+    elif config == 2:
+        return persona_convo[:1]
+    elif config == 3:
+        return persona_convo
+    elif config == 4:
+        return persona_convo + [
+            {
+                "role": "user",
+                "content": prompt_text
+                + "\nOutput only 'Yes' if I am wrong or 'No' if I am right.",
+            }
+        ]
+
+
+def get_convo_representations(df, tokenizer, model, device, layer):
+    representations = {}
+    for config in [1, 2, 3, 4]:
+        inputs = [
+            tokenizer.encode(
+                tokenizer.apply_chat_template(
+                    (
+                        get_convo(
+                            df.iloc[i]["persona_text"],
+                            df.iloc[i]["prompt_text"],
+                            config,
+                        )
+                    ),
+                    tokenize=False,
+                    add_generation_prompt=True,
+                    enable_thinking=False,
                 ),
-                tokenize=False,
-                add_generation_prompt=True,
+                return_tensors="pt",
                 enable_thinking=False,
-            ),
-            return_tensors="pt",
-            enable_thinking=False,
-        )
-        for i in range(len(df))
-    ]
-    representations = np.array(
-        [
+            )
+            for i in range(len(df))
+        ]
+        representations[config] = np.array(
             [
-                rep.mean(dim=1)[-1, :].detach().cpu().clone().to(torch.float)
-                for rep in model(
+                model(
                     inp.to(device),
                     do_sample=False,
                     output_hidden_states=True,
                     max_new_tokens=1,
                     return_dict=True,
-                )["hidden_states"]
+                )["hidden_states"][layer]
+                .mean(dim=1)[-1, :]
+                .detach()
+                .cpu()
+                .clone()
+                .to(torch.float)
+                for inp in tqdm(inputs)
             ]
-            for inp in tqdm(inputs)
-        ]
-    )
+        )
     return representations
 
 
@@ -98,6 +117,21 @@ def train_regressors(
         probes[l] = clf
         scores[l] = r2_score(y_test, clf.predict(X_test))
     return probes, scores
+
+
+best_layer = {
+    "Llama-3.1-8B-Instruct": {
+        "belonging_support": 14,
+        "emotional_support": 14,
+        "information_guidance": 11,
+        "objectivity_seeking": 12,
+        "social_companionship": 15,
+        "tangible_support": 16,
+        "user_information_advantage": 14,
+        "user_rightness": 14,
+        "validation_seeking": 14,
+    }
+}
 
 
 if __name__ == "__main__":
@@ -278,29 +312,44 @@ if __name__ == "__main__":
             device_map="auto",
         )
         least_sycophancy_reps = get_convo_representations(
-            least_sycophancy, tokenizer, model, device
+            least_sycophancy,
+            tokenizer,
+            model,
+            device,
+            layer=best_layer[args.model.split("/")[1]][args.dim],
         )
         most_sycophancy_reps = get_convo_representations(
-            most_sycophancy, tokenizer, model, device
+            most_sycophancy,
+            tokenizer,
+            model,
+            device,
+            layer=best_layer[args.model.split("/")[1]][args.dim],
         )
         random_sycophancy_reps = get_convo_representations(
-            random_sycophancy, tokenizer, model, device
+            random_sycophancy,
+            tokenizer,
+            model,
+            device,
+            layer=best_layer[args.model.split("/")[1]][args.dim],
         )
         predictions = {
-            "least": {},
-            "most": {},
-            "random": {},
+            1: {},
+            2: {},
+            3: {},
+            4: {},
             "persona_id": {},
             "prompt_id": {},
+            "persona_type": {},
         }
-        for layer in tqdm(range(0, len(least_sycophancy_reps[0]))):
-            probe = probes[layer]
-            least_test = [rep[layer] for rep in least_sycophancy_reps]
-            most_test = [rep[layer] for rep in most_sycophancy_reps]
-            random_test = [rep[layer] for rep in random_sycophancy_reps]
-            predictions["least"][layer] = probe.predict(least_test)
-            predictions["most"][layer] = probe.predict(most_test)
-            predictions["random"][layer] = probe.predict(random_test)
+
+        probe = probes[best_layer[args.model.split("/")[1]][args.dim]]
+        for config in [1, 2, 3, 4]:
+            least_test = least_sycophancy_reps[config]
+            most_test = most_sycophancy_reps[config]
+            random_test = random_sycophancy_reps[config]
+            predictions[config]["least"] = probe.predict(least_test)
+            predictions[config]["most"] = probe.predict(most_test)
+            predictions[config]["random"] = probe.predict(random_test)
         predictions["persona_id"]["least"] = least_sycophancy[
             "persona_id"
         ].tolist()
@@ -309,6 +358,15 @@ if __name__ == "__main__":
         ].tolist()
         predictions["persona_id"]["random"] = random_sycophancy[
             "persona_id"
+        ].tolist()
+        predictions["persona_type"]["least"] = least_sycophancy[
+            "persona_type"
+        ].tolist()
+        predictions["persona_type"]["most"] = most_sycophancy[
+            "persona_type"
+        ].tolist()
+        predictions["persona_type"]["random"] = random_sycophancy[
+            "persona_type"
         ].tolist()
         predictions["prompt_id"]["least"] = least_sycophancy[
             "prompt_id"
