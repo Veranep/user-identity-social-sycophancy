@@ -46,7 +46,7 @@ def get_convo(persona_text, prompt_text, config):
     if config == 1:
         return [persona_convo[0]]
     elif config == 2:
-        return persona_convo[:1]
+        return persona_convo[:2]
     elif config == 3:
         return persona_convo
     elif config == 4:
