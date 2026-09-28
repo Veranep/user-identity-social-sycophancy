@@ -286,7 +286,13 @@ if __name__ == "__main__":
         random_sycophancy_reps = get_convo_representations(
             random_sycophancy, tokenizer, model, device
         )
-        predictions = {"least": {}, "most": {}, "random": {}}
+        predictions = {
+            "least": {},
+            "most": {},
+            "random": {},
+            "persona_id": {},
+            "prompt_id": {},
+        }
         for layer in tqdm(range(0, len(least_sycophancy_reps[0]))):
             probe = probes[layer]
             least_test = [rep[layer] for rep in least_sycophancy_reps]
@@ -295,6 +301,24 @@ if __name__ == "__main__":
             predictions["least"][layer] = probe.predict(least_test)
             predictions["most"][layer] = probe.predict(most_test)
             predictions["random"][layer] = probe.predict(random_test)
+        predictions["persona_id"]["least"] = least_sycophancy[
+            "persona_id"
+        ].tolist()
+        predictions["persona_id"]["most"] = most_sycophancy[
+            "persona_id"
+        ].tolist()
+        predictions["persona_id"]["random"] = random_sycophancy[
+            "persona_id"
+        ].tolist()
+        predictions["prompt_id"]["least"] = least_sycophancy[
+            "prompt_id"
+        ].tolist()
+        predictions["prompt_id"]["most"] = most_sycophancy[
+            "prompt_id"
+        ].tolist()
+        predictions["prompt_id"]["random"] = random_sycophancy[
+            "prompt_id"
+        ].tolist()
         # get predictions
         with open(
             f"{args.results_file_path}/{args.model.split('/')[1]}_{args.dim}_predictions.pkl",
@@ -349,17 +373,51 @@ if __name__ == "__main__":
             torch_dtype=torch.bfloat16,
             device_map="auto",
         )
-        train_representations = get_representations(
-            train_df, "user_text", tokenizer, model, device
-        )
-        with open(
-            f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_train_representations.pkl",
-            "wb",
-        ) as outfile:
-            pickle.dump(
-                train_representations,
-                outfile,
+        if "70B" in args.model:
+            train_representations1 = get_representations(
+                train_df.iloc[: len(train_df.index) // 2],
+                "user_text",
+                tokenizer,
+                model,
+                device,
             )
+            with open(
+                f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_train_representations1.pkl",
+                "wb",
+            ) as outfile:
+                pickle.dump(
+                    train_representations1,
+                    outfile,
+                )
+            del train_representations1
+            train_representations2 = get_representations(
+                train_df.iloc[len(train_df.index) // 2 :],
+                "user_text",
+                tokenizer,
+                model,
+                device,
+            )
+            with open(
+                f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_train_representations2.pkl",
+                "wb",
+            ) as outfile:
+                pickle.dump(
+                    train_representations2,
+                    outfile,
+                )
+            del train_representations2
+        else:
+            train_representations = get_representations(
+                train_df, "user_text", tokenizer, model, device
+            )
+            with open(
+                f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_train_representations.pkl",
+                "wb",
+            ) as outfile:
+                pickle.dump(
+                    train_representations,
+                    outfile,
+                )
         test_representations = get_representations(
             test_df, "user_text", tokenizer, model, device
         )
