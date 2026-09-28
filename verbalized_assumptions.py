@@ -374,38 +374,44 @@ if __name__ == "__main__":
             device_map="auto",
         )
         if "70B" in args.model:
-            train_representations1 = get_representations(
-                train_df.iloc[: len(train_df.index) // 2],
-                "user_text",
-                tokenizer,
-                model,
-                device,
-            )
-            with open(
-                f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_train_representations1.pkl",
-                "wb",
-            ) as outfile:
-                pickle.dump(
-                    train_representations1,
-                    outfile,
+            if not os.path.isfile(
+                f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_train_representations2.pkl"
+            ):
+                train_representations2 = get_representations(
+                    train_df.iloc[len(train_df.index) // 2 :],
+                    "user_text",
+                    tokenizer,
+                    model,
+                    device,
                 )
-            del train_representations1
-            train_representations2 = get_representations(
-                train_df.iloc[len(train_df.index) // 2 :],
-                "user_text",
-                tokenizer,
-                model,
-                device,
-            )
-            with open(
-                f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_train_representations2.pkl",
-                "wb",
-            ) as outfile:
-                pickle.dump(
-                    train_representations2,
-                    outfile,
+                with open(
+                    f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_train_representations2.pkl",
+                    "wb",
+                ) as outfile:
+                    pickle.dump(
+                        train_representations2,
+                        outfile,
+                    )
+                del train_representations2
+            if not os.path.isfile(
+                f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_train_representations1.pkl"
+            ):
+                train_representations1 = get_representations(
+                    train_df.iloc[: len(train_df.index) // 2],
+                    "user_text",
+                    tokenizer,
+                    model,
+                    device,
                 )
-            del train_representations2
+                with open(
+                    f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_train_representations1.pkl",
+                    "wb",
+                ) as outfile:
+                    pickle.dump(
+                        train_representations1,
+                        outfile,
+                    )
+                del train_representations1
         else:
             train_representations = get_representations(
                 train_df, "user_text", tokenizer, model, device
