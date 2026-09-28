@@ -130,7 +130,18 @@ best_layer = {
         "user_information_advantage": 14,
         "user_rightness": 14,
         "validation_seeking": 14,
-    }
+    },
+    "Qwen3-8B": {
+        "belonging_support": 26,
+        "emotional_support": 26,
+        "information_guidance": 28,
+        "objectivity_seeking": 25,
+        "social_companionship": 26,
+        "tangible_support": 28,
+        "user_information_advantage": 24,
+        "user_rightness": 27,
+        "validation_seeking": 25,
+    },
 }
 
 
