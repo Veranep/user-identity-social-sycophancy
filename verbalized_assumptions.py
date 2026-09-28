@@ -326,14 +326,30 @@ if __name__ == "__main__":
         ) as outfile:
             pickle.dump(predictions, outfile)
     elif os.path.isfile(
-        f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_train_representations.pkl"
+        f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_test_representations.pkl"
     ):
+        if "70B" in args.model:
+            with open(
+                f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_train_representations1.pkl",
+                "rb",
+            ) as infile:
+                train_representations1 = pickle.load(infile)
+            with open(
+                f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_train_representations2.pkl",
+                "rb",
+            ) as infile:
+                train_representations2 = pickle.load(infile)
 
-        with open(
-            f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_train_representations.pkl",
-            "rb",
-        ) as infile:
-            train_representations = pickle.load(infile)
+            train_representations = np.concatenate(
+                [train_representations1, train_representations2], axis=0
+            )
+
+        else:
+            with open(
+                f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_train_representations.pkl",
+                "rb",
+            ) as infile:
+                train_representations = pickle.load(infile)
 
         with open(
             f"{args.results_file_path}/{args.model.split('/')[1]}_{dataset}_test_representations.pkl",
