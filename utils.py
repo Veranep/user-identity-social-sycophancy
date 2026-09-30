@@ -14,7 +14,7 @@ persona_types = [
     "assumptions",
 ]
 
-wc_persona_types = ["career", "creative"]
+wc_persona_types = ["career", "creative", "random"]
 
 feature_cols = {
     "emotions": [
