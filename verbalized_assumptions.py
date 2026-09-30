@@ -270,7 +270,7 @@ if __name__ == "__main__":
 
         df = df.merge(df_personas, on=["persona_id", "persona_type"])
         print(df.shape)
-        df = df.merge(df_prompts, how="outer", on=["prompt_id"])
+        df = df.merge(df_prompts, on=["prompt_id"])
         print(df.shape)
 
         df = df.loc[~pd.isna(df["persona_type"])]
