@@ -6,6 +6,7 @@ from openai import OpenAI
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+from torch.utils.data import Dataset
 import spacy
 
 from get_model_responses import get_persona_convo
@@ -16,8 +17,27 @@ from get_model_responses import get_persona_convo
 #     # base_url="https://eu.api.openai.com/v1",
 # )
 
+
+class ListDataset(Dataset):
+    def __init__(self, original_list):
+        self.original_list = original_list
+
+    def __len__(self):
+        return len(self.original_list)
+
+    def __getitem__(self, i):
+        return self.original_list[i]
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-m",
+        "--model",
+        type=str,
+        default="meta-llama/Llama-3.1-8B-Instruct",
+        help="Model to evaluate",
+    )
     parser.add_argument(
         "--verbose",
         action="store_true",
@@ -184,17 +204,134 @@ User information:
         for persona_type in persona_types:
             texts.append(df_personas.iloc[i][persona_type])
 
-    if os.path.isfile("batch_output_ch_final.jsonl"):
-        with open("batch_output_ch_final.jsonl", "r") as json_file:
-            json_list = list(json_file)
+    if "gpt" in args.model:
+        if os.path.isfile("batch_output_ch_final.jsonl"):
+            with open("batch_output_ch_final.jsonl", "r") as json_file:
+                json_list = list(json_file)
 
-        output = [json.loads(f) for f in json_list]
-        output = {
-            int(o["custom_id"].split("-")[1]): o["response"]["body"][
-                "choices"
-            ][0]["message"]["content"]
-            for o in output
-        }
+            output = [json.loads(f) for f in json_list]
+            output = {
+                int(o["custom_id"].split("-")[1]): o["response"]["body"][
+                    "choices"
+                ][0]["message"]["content"]
+                for o in output
+            }
+            overlap = []
+            for i in tqdm(range(len(persona_types) * n)):
+                if args.verbose:
+                    print(texts[i])
+                    print(
+                        "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+                    )
+                    print(output[i])
+                    print(
+                        "-----------------------------------------------------------------------------"
+                    )
+                persona_type = persona_types[i % len(persona_types)]
+                idx = i // len(persona_types)
+                df_personas.loc[idx, persona_type] = output[i]
+
+                conv_history = " ".join(
+                    [
+                        turn["content"]
+                        for turn in get_persona_convo(output[i])
+                        if turn["role"] == "user"
+                    ]
+                )
+
+                text_tokens = set([t.text.lower() for t in nlp(texts[i])])
+                conv_history_tokens = set(
+                    [t.text.lower() for t in nlp(conv_history)]
+                )
+
+                overlap.append(
+                    len(text_tokens.intersection(conv_history_tokens))
+                    / len(text_tokens)
+                    * 100
+                )
+
+            if not os.path.isfile(f"data/personas_{n}_ch.gz"):
+                df_personas.to_pickle(f"data/personas_{n}_ch.gz")
+
+            print(np.mean(overlap))
+
+        # batch = client.batches.retrieve('batch_...')
+        # file_response = client.files.content('file-...')
+        # with open("batch_output_ch_final.jsonl", "w") as f:
+        #    f.write(file_response.text)
+
+        else:
+            pass
+            # lines = [
+            #     {
+            #         "custom_id": f"request-{i}",
+            #         "method": "POST",
+            #         "url": "/v1/chat/completions",
+            #         "body": {
+            #             "model": "gpt-5-mini",
+            #             "messages": [
+            #                 {
+            #                     "role": "system",
+            #                     "content": "You are a helpful assistant.",
+            #                 },
+            #                 {"role": "user", "content": prompt.format(text=text)},
+            #             ],
+            #         },
+            #     }
+            #     for i, text in enumerate(texts)
+            # ]
+            # with open("batch_input_ch_final.jsonl", "w") as f:
+            #     for item in lines:
+            #         f.write(json.dumps(item) + "\n")
+            # batch_input_file = client.files.create(
+            #     file=open("batch_input_ch_final.jsonl", "rb"), purpose="batch"
+            # )
+
+            # print(batch_input_file)
+            # batch_input_file_id = batch_input_file.id
+            # batch = client.batches.create(
+            #     input_file_id=batch_input_file_id,
+            #     endpoint="/v1/chat/completions",
+            #     completion_window="24h",
+            #     metadata={
+            #         "description": f"write conversation history for {n} personas"
+            #     },
+            # )
+            # print(batch)
+    elif not os.path.isfile(f"data/personas_{n}_{model}_ch.gz"):
+        if args.token:
+            login(args.token)
+        model = pipeline(
+            "text-generation",
+            model=args.model,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+        )
+        if not model.tokenizer.pad_token_id:
+            model.tokenizer.pad_token_id = model.tokenizer.eos_token_id
+
+        texts = [
+            model.tokenizer.apply_chat_template(
+                prompt.format(text=text),
+                tokenize=False,
+                add_generation_prompt=True,
+                enable_thinking=False,
+            )
+            for text in texts
+        ]
+        output = [
+            answer[0]["generated_text"]
+            for answer in tqdm(
+                model(
+                    ListDataset(texts),
+                    batch_size=32,
+                    do_sample=False,
+                    return_full_text=False,
+                    max_new_tokens=500,
+                ),
+                total=len(texts),
+            )
+        ]
         overlap = []
         for i in tqdm(range(len(persona_types) * n)):
             if args.verbose:
@@ -210,6 +347,11 @@ User information:
             idx = i // len(persona_types)
             df_personas.loc[idx, persona_type] = output[i]
 
+        df_personas.to_pickle(f"data/personas_{n}_{model}_ch.gz")
+
+    else:
+        df_personas = pd.read_pickle(f"data/personas_{n}_{model}_ch.gz")
+        for i in tqdm(range(len(persona_types) * n)):
             conv_history = " ".join(
                 [
                     turn["content"]
@@ -229,51 +371,4 @@ User information:
                 * 100
             )
 
-        if not os.path.isfile(f"data/personas_{n}_ch.gz"):
-            df_personas.to_pickle(f"data/personas_{n}_ch.gz")
-
         print(np.mean(overlap))
-
-    # batch = client.batches.retrieve('batch_...')
-    # file_response = client.files.content('file-...')
-    # with open("batch_output_ch_final.jsonl", "w") as f:
-    #    f.write(file_response.text)
-
-    else:
-        pass
-        # lines = [
-        #     {
-        #         "custom_id": f"request-{i}",
-        #         "method": "POST",
-        #         "url": "/v1/chat/completions",
-        #         "body": {
-        #             "model": "gpt-5-mini",
-        #             "messages": [
-        #                 {
-        #                     "role": "system",
-        #                     "content": "You are a helpful assistant.",
-        #                 },
-        #                 {"role": "user", "content": prompt.format(text=text)},
-        #             ],
-        #         },
-        #     }
-        #     for i, text in enumerate(texts)
-        # ]
-        # with open("batch_input_ch_final.jsonl", "w") as f:
-        #     for item in lines:
-        #         f.write(json.dumps(item) + "\n")
-        # batch_input_file = client.files.create(
-        #     file=open("batch_input_ch_final.jsonl", "rb"), purpose="batch"
-        # )
-
-        # print(batch_input_file)
-        # batch_input_file_id = batch_input_file.id
-        # batch = client.batches.create(
-        #     input_file_id=batch_input_file_id,
-        #     endpoint="/v1/chat/completions",
-        #     completion_window="24h",
-        #     metadata={
-        #         "description": f"write conversation history for {n} personas"
-        #     },
-        # )
-        # print(batch)
