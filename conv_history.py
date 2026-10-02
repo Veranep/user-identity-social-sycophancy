@@ -306,7 +306,9 @@ User information:
             #     },
             # )
             # print(batch)
-    elif not os.path.isfile(f"data/personas_{n}_{model}_ch.gz"):
+    elif not os.path.isfile(
+        f"data/personas_{n}_{args.model.split('/')[-1]}_ch.gz"
+    ):
         if args.token:
             login(args.token)
         model = pipeline(
@@ -355,10 +357,14 @@ User information:
             idx = i // len(persona_types)
             df_personas.loc[idx, persona_type] = output[i]
 
-        df_personas.to_pickle(f"data/personas_{n}_{model}_ch.gz")
+        df_personas.to_pickle(
+            f"data/personas_{n}_{args.model.split('/')[-1]}_ch.gz"
+        )
 
     else:
-        df_personas = pd.read_pickle(f"data/personas_{n}_{model}_ch.gz")
+        df_personas = pd.read_pickle(
+            f"data/personas_{n}_{args.model.split('/')[-1]}_ch.gz"
+        )
         for i in tqdm(range(len(persona_types) * n)):
             conv_history = " ".join(
                 [
