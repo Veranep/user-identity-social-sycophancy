@@ -7,6 +7,7 @@ from openai import OpenAI
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+import torch
 from torch.utils.data import Dataset
 from transformers import pipeline
 
@@ -216,6 +217,8 @@ User information:
                 for o in output
             }
             for i in tqdm(range(len(persona_types) * n)):
+                persona_type = persona_types[i % len(persona_types)]
+                idx = i // len(persona_types)
                 df_personas.loc[idx, persona_type] = output[i]
 
             df_personas.to_pickle(f"data/personas_{n}_ch.gz")
@@ -300,6 +303,8 @@ User information:
             )
         ]
         for i in tqdm(range(len(persona_types) * n)):
+            persona_type = persona_types[i % len(persona_types)]
+            idx = i // len(persona_types)
             df_personas.loc[idx, persona_type] = output[i]
 
         df_personas.to_pickle(
