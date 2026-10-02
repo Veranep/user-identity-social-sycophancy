@@ -9,9 +9,6 @@ import pandas as pd
 from tqdm import tqdm
 from torch.utils.data import Dataset
 from transformers import pipeline
-import spacy
-
-from get_model_responses import get_persona_convo
 
 # client = OpenAI(
 #     # This is the default and can be omitted
@@ -41,11 +38,6 @@ if __name__ == "__main__":
         help="Model to evaluate",
     )
     parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Print persona identity descriptions and corresponding conversation histories",
-    )
-    parser.add_argument(
         "-token",
         type=str,
         default="",
@@ -58,7 +50,6 @@ Make sure the last turn is by the assistant and that this turn does not end with
 User information:
 {text}"""
     n = 200
-    nlp = spacy.load("en_core_web_sm")
     if not os.path.isfile(f"data/personas_{n}.gz"):
         df_personas = (
             load_dataset(
@@ -224,44 +215,10 @@ User information:
                 ][0]["message"]["content"]
                 for o in output
             }
-            overlap = []
             for i in tqdm(range(len(persona_types) * n)):
-                if args.verbose:
-                    print(texts[i])
-                    print(
-                        "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-                    )
-                    print(output[i])
-                    print(
-                        "-----------------------------------------------------------------------------"
-                    )
-                persona_type = persona_types[i % len(persona_types)]
-                idx = i // len(persona_types)
                 df_personas.loc[idx, persona_type] = output[i]
 
-                conv_history = " ".join(
-                    [
-                        turn["content"]
-                        for turn in get_persona_convo(output[i])
-                        if turn["role"] == "user"
-                    ]
-                )
-
-                text_tokens = set([t.text.lower() for t in nlp(texts[i])])
-                conv_history_tokens = set(
-                    [t.text.lower() for t in nlp(conv_history)]
-                )
-
-                overlap.append(
-                    len(text_tokens.intersection(conv_history_tokens))
-                    / len(text_tokens)
-                    * 100
-                )
-
-            if not os.path.isfile(f"data/personas_{n}_ch.gz"):
-                df_personas.to_pickle(f"data/personas_{n}_ch.gz")
-
-            print(np.mean(overlap))
+            df_personas.to_pickle(f"data/personas_{n}_ch.gz")
 
         # batch = client.batches.retrieve('batch_...')
         # file_response = client.files.content('file-...')
@@ -337,52 +294,14 @@ User information:
                     batch_size=32,
                     do_sample=False,
                     return_full_text=False,
-                    max_new_tokens=500,
+                    max_new_tokens=4096,
                 ),
                 total=len(texts),
             )
         ]
-        overlap = []
         for i in tqdm(range(len(persona_types) * n)):
-            if args.verbose:
-                print(texts[i])
-                print(
-                    "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-                )
-                print(output[i])
-                print(
-                    "-----------------------------------------------------------------------------"
-                )
-            persona_type = persona_types[i % len(persona_types)]
-            idx = i // len(persona_types)
             df_personas.loc[idx, persona_type] = output[i]
 
         df_personas.to_pickle(
             f"data/personas_{n}_{args.model.split('/')[-1]}_ch.gz"
         )
-
-    else:
-        df_personas = pd.read_pickle(
-            f"data/personas_{n}_{args.model.split('/')[-1]}_ch.gz"
-        )
-        for i in tqdm(range(len(persona_types) * n)):
-            conv_history = " ".join(
-                [
-                    turn["content"]
-                    for turn in get_persona_convo(output[i])
-                    if turn["role"] == "user"
-                ]
-            )
-
-            text_tokens = set([t.text.lower() for t in nlp(texts[i])])
-            conv_history_tokens = set(
-                [t.text.lower() for t in nlp(conv_history)]
-            )
-
-            overlap.append(
-                len(text_tokens.intersection(conv_history_tokens))
-                / len(text_tokens)
-                * 100
-            )
-
-        print(np.mean(overlap))
