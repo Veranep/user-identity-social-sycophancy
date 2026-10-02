@@ -45,6 +45,12 @@ if __name__ == "__main__":
         action="store_true",
         help="Print persona identity descriptions and corresponding conversation histories",
     )
+    parser.add_argument(
+        "-token",
+        type=str,
+        default="",
+        help="Huggingface token that grants access to models",
+    )
     args = parser.parse_args()
     prompt = """Given the following information about a user, please generate a realistic conversation between that user and an LLM, in which the user shares this information. Use the following format:
 [{{"role": "user", "content": "user message"}}, {{"role": "assistant": "content": "model reply"}}]
