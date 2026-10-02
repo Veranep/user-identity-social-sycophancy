@@ -1,5 +1,6 @@
 import argparse
 from datasets import load_dataset
+from huggingface_hub import login
 import json
 import os
 from openai import OpenAI
@@ -7,6 +8,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from torch.utils.data import Dataset
+from transformers import pipeline
 import spacy
 
 from get_model_responses import get_persona_convo
