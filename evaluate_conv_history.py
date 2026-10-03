@@ -110,15 +110,15 @@ if __name__ == "__main__":
         ]
         ref_user_turns = [
             turn["content"]
+            for convo in reference["conversation"]
             for turn in convo
             if turn["role"] == "user"
-            for convo in reference["conversation"]
         ]
         ref_model_turns = [
             turn["content"]
+            for convo in reference["conversation"]
             for turn in convo
             if turn["role"] == "assistant"
-            for convo in reference["conversation"]
         ]
         out = mauve.compute_mauve(
             p_text=user_turns,
