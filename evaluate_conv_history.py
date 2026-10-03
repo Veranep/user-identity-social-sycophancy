@@ -1,5 +1,6 @@
 import argparse
 from datasets import load_dataset
+from huggingface_hub import login
 import json
 import numpy as np
 from openai import OpenAI
@@ -39,6 +40,12 @@ if __name__ == "__main__":
         type=str,
         choices=["overlap", "naturalness", "sycophancy"],
         help="Type of evaluation to conduct",
+    )
+    parser.add_argument(
+        "-token",
+        type=str,
+        default="",
+        help="Huggingface token that grants access to models",
     )
     args = parser.parse_args()
     n = 200
@@ -80,6 +87,8 @@ if __name__ == "__main__":
         print(np.mean(overlap))
 
     elif args.eval == "naturalness":
+        if args.token:
+            login(args.token)
         conv_hists = [
             " ".join(
                 [
