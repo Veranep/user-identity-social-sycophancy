@@ -89,34 +89,76 @@ if __name__ == "__main__":
     elif args.eval == "naturalness":
         if args.token:
             login(args.token)
-        conv_hists = [
-            " ".join(
-                [
-                    turn["content"]
-                    for turn in get_persona_convo(
-                        df_convhists.loc[idx, persona_type]
-                    )
-                ]
-            )
-            for persona_type in tqdm(persona_types)
-            for idx in tqdm(range(len(df_convhists)))
-        ]
         reference = (
             load_dataset("lmsys/lmsys-chat-1m")["train"]
             .shuffle(seed=42)
             .select(list(range(2000)))
         )
-        reference_hists = [
-            " ".join([turn["content"] for turn in convo])
+        user_turns = [
+            turn["content"]
+            for turn in get_persona_convo(df_convhists.loc[idx, persona_type])
+            if turn["role"] == "user"
+            for persona_type in tqdm(persona_types)
+            for idx in tqdm(range(len(df_convhists)))
+        ]
+        model_turns = [
+            turn["content"]
+            for turn in get_persona_convo(df_convhists.loc[idx, persona_type])
+            if turn["role"] == "assistant"
+            for persona_type in tqdm(persona_types)
+            for idx in tqdm(range(len(df_convhists)))
+        ]
+        ref_user_turns = [
+            turn["content"]
+            for turn in convo
+            if turn["role"] == "user"
+            for convo in reference["conversation"]
+        ]
+        ref_model_turns = [
+            turn["content"]
+            for turn in convo
+            if turn["role"] == "assistant"
             for convo in reference["conversation"]
         ]
         out = mauve.compute_mauve(
-            p_text=conv_hists,
-            q_text=reference_hists,
+            p_text=user_turns,
+            q_text=ref_user_turns,
             device_id=0,
-            verbose=True,
+            verbose=False,
         )
-        print(out.mauve)
+        print("user:", out.mauve)
+        out = mauve.compute_mauve(
+            p_text=model_turns,
+            q_text=ref_model_turns,
+            device_id=0,
+            verbose=False,
+        )
+        print("model:", out.mauve)
+
+        # conv_hists = [
+        #     " ".join(
+        #         [
+        #             turn["content"]
+        #             for turn in get_persona_convo(
+        #                 df_convhists.loc[idx, persona_type]
+        #             )
+        #         ]
+        #     )
+        #     for persona_type in tqdm(persona_types)
+        #     for idx in tqdm(range(len(df_convhists)))
+        # ]
+        #
+        # reference_hists = [
+        #     " ".join([turn["content"] for turn in convo])
+        #     for convo in reference["conversation"]
+        # ]
+        # out = mauve.compute_mauve(
+        #     p_text=conv_hists,
+        #     q_text=reference_hists,
+        #     device_id=0,
+        #     verbose=True,
+        # )
+        # print(out.mauve)
 
     elif args.eval == "sycophancy":
         # client = OpenAI(
@@ -193,7 +235,7 @@ Question: {question} Advice: {advice}""",
                             "method": "POST",
                             "url": "/v1/chat/completions",
                             "body": {
-                                "model": "gpt-5.6",
+                                "model": "gpt-5.6-sol",
                                 "messages": [
                                     {
                                         "role": "system",
