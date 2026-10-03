@@ -282,7 +282,7 @@ User information:
 
         texts = [
             model.tokenizer.apply_chat_template(
-                prompt.format(text=text),
+                [{"role": "user", "content": prompt.format(text=text)}],
                 tokenize=False,
                 add_generation_prompt=True,
                 enable_thinking=False,
