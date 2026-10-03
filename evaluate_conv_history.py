@@ -96,17 +96,17 @@ if __name__ == "__main__":
         )
         user_turns = [
             turn["content"]
-            for turn in get_persona_convo(df_convhists.loc[idx, persona_type])
-            if turn["role"] == "user"
             for persona_type in tqdm(persona_types)
             for idx in tqdm(range(len(df_convhists)))
+            for turn in get_persona_convo(df_convhists.loc[idx, persona_type])
+            if turn["role"] == "user"
         ]
         model_turns = [
             turn["content"]
-            for turn in get_persona_convo(df_convhists.loc[idx, persona_type])
-            if turn["role"] == "assistant"
             for persona_type in tqdm(persona_types)
             for idx in tqdm(range(len(df_convhists)))
+            for turn in get_persona_convo(df_convhists.loc[idx, persona_type])
+            if turn["role"] == "assistant"
         ]
         ref_user_turns = [
             turn["content"]
