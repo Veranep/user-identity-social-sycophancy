@@ -1,4 +1,5 @@
 import argparse
+from datasets import load_dataset
 import json
 import numpy as np
 from openai import OpenAI
