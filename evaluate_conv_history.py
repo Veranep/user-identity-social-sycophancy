@@ -94,71 +94,72 @@ if __name__ == "__main__":
             .shuffle(seed=42)
             .select(list(range(2000)))
         )
-        user_turns = [
-            turn["content"]
-            for persona_type in tqdm(persona_types)
-            for idx in tqdm(range(len(df_convhists)))
-            for turn in get_persona_convo(df_convhists.loc[idx, persona_type])
-            if turn["role"] == "user"
-        ]
-        model_turns = [
-            turn["content"]
-            for persona_type in tqdm(persona_types)
-            for idx in tqdm(range(len(df_convhists)))
-            for turn in get_persona_convo(df_convhists.loc[idx, persona_type])
-            if turn["role"] == "assistant"
-        ]
-        ref_user_turns = [
-            turn["content"]
-            for convo in reference["conversation"]
-            for turn in convo
-            if turn["role"] == "user"
-        ]
-        ref_model_turns = [
-            turn["content"]
-            for convo in reference["conversation"]
-            for turn in convo
-            if turn["role"] == "assistant"
-        ]
-        out = mauve.compute_mauve(
-            p_text=user_turns,
-            q_text=ref_user_turns,
-            device_id=0,
-            verbose=False,
-        )
-        print("user:", out.mauve)
-        out = mauve.compute_mauve(
-            p_text=model_turns,
-            q_text=ref_model_turns,
-            device_id=0,
-            verbose=False,
-        )
-        print("model:", out.mauve)
-
-        # conv_hists = [
-        #     " ".join(
-        #         [
-        #             turn["content"]
-        #             for turn in get_persona_convo(
-        #                 df_convhists.loc[idx, persona_type]
-        #             )
-        #         ]
-        #     )
+        # user_turns = [
+        #     turn["content"]
         #     for persona_type in tqdm(persona_types)
         #     for idx in tqdm(range(len(df_convhists)))
+        #     for turn in get_persona_convo(df_convhists.loc[idx, persona_type])
+        #     if turn["role"] == "user"
         # ]
-        #
-        # reference_hists = [
-        #     " ".join([turn["content"] for turn in convo])
+        # model_turns = [
+        #     turn["content"]
+        #     for persona_type in tqdm(persona_types)
+        #     for idx in tqdm(range(len(df_convhists)))
+        #     for turn in get_persona_convo(df_convhists.loc[idx, persona_type])
+        #     if turn["role"] == "assistant"
+        # ]
+        # ref_user_turns = [
+        #     turn["content"]
         #     for convo in reference["conversation"]
+        #     for turn in convo
+        #     if turn["role"] == "user"
+        # ]
+        # ref_model_turns = [
+        #     turn["content"]
+        #     for convo in reference["conversation"]
+        #     for turn in convo
+        #     if turn["role"] == "assistant"
         # ]
         # out = mauve.compute_mauve(
-        #     p_text=conv_hists,
-        #     q_text=reference_hists,
+        #     p_text=user_turns,
+        #     q_text=ref_user_turns,
         #     device_id=0,
-        #     verbose=True,
+        #     verbose=False,
         # )
-        # print(out.mauve)
+        # print("user:", out.mauve)
+        # out = mauve.compute_mauve(
+        #     p_text=model_turns,
+        #     q_text=ref_model_turns,
+        #     device_id=0,
+        #     verbose=False,
+        # )
+        # print("model:", out.mauve)
+
+        conv_hists = [
+            " ".join(
+                [
+                    turn["content"]
+                    for turn in get_persona_convo(
+                        df_convhists.loc[idx, persona_type]
+                    )
+                ]
+            )
+            for persona_type in tqdm(persona_types)
+            for idx in tqdm(range(len(df_convhists)))
+        ]
+
+        reference_hists = [
+            " ".join([turn["content"] for turn in convo])
+            for convo in reference["conversation"]
+        ]
+        out = mauve.compute_mauve(
+            p_text=conv_hists,
+            q_text=reference_hists,
+            device_id=0,
+            verbose=False,
+            mauve_scaling_factor=1,
+        )
+        print(out.mauve)
 
     elif args.eval == "sycophancy":
         # client = OpenAI(
