@@ -50,7 +50,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--wc",
         action="store_true",
-        help="Whether to concatenate wildchat or regular results",
+        help="Whether to start from wildchat or regular conversations",
     )
     parser.add_argument(
         "--warm_start",
@@ -311,6 +311,7 @@ User information:
                         "career": career,
                         "random": random,
                         "creative": creative,
+                        "uuid": list(range(len(career))),
                     }
                 )
                 persona_types = ["career", "random", "creative"]
