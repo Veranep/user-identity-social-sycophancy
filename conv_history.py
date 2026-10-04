@@ -11,6 +11,8 @@ import torch
 from torch.utils.data import Dataset
 from transformers import pipeline
 
+from get_model_responses import get_persona_convo
+
 # client = OpenAI(
 #     # This is the default and can be omitted
 #     api_key=os.environ.get("OPENAI_API_KEY"),
