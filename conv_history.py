@@ -356,7 +356,7 @@ User information:
                         ListDataset(texts),
                         batch_size=32,
                         do_sample=False,
-                        return_full_text=True,
+                        return_full_text=False,
                         max_new_tokens=4096,
                     ),
                     total=len(texts),
