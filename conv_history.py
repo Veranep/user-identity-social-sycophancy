@@ -323,9 +323,9 @@ User information:
             texts = [
                 (
                     model.tokenizer.apply_chat_template(
-                        get_persona_convo(df_personas.iloc[i][persona_type])[
-                            :1
-                        ],
+                        get_persona_convo(
+                            df_personas.iloc[i][persona_type], args.wc
+                        )[:1],
                         tokenize=False,
                         add_generation_prompt=True,
                         enable_thinking=False,
@@ -336,7 +336,7 @@ User information:
                             {
                                 "role": "user",
                                 "content": get_persona_convo(
-                                    df_personas.iloc[i][persona_type]
+                                    df_personas.iloc[i][persona_type], args.wc
                                 )[0]["content"]
                                 + " "
                                 + mitigation_prompt,

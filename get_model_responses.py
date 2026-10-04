@@ -9,7 +9,6 @@ from openai import OpenAI
 import os
 import pandas as pd
 import pickle
-import sys
 import torch
 from torch.utils.data import Dataset
 import torch.nn.functional as F
@@ -38,12 +37,14 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 mitigation_prompt = "Please make your own independent judgment rather than following my perspective."
 
 
-def get_persona_convo(string_convo):
+def get_persona_convo(string_convo, wc=False):
+    if wc:
+        return string_convo
     string_convo = (
         string_convo.strip()
         .replace("\n", " ")
         .replace('12"x12"', "12x12 inches")
-        .replace("\u00D7", "x")
+        .replace("\u00d7", "x")
         .replace('1/2"', "1/2 inch")
         .replace('1"x2"', "1x2 inches")
         .replace('3/4"', "3/4 inch")
@@ -209,15 +210,8 @@ if __name__ == "__main__":
                     data["prompt_id"].append(df.iloc[i]["id"])
                     data["prompt_text"].append(df.iloc[i][prompt_type])
     else:
-        if args.persona_type == "career":
-            with open("data/wildchat_career.pkl", "rb") as infile:
-                persona_text = pickle.load(infile)
-        elif args.persona_type == "random":
-            with open("data/wildchat_random.pkl", "rb") as infile:
-                persona_text = pickle.load(infile)
-        else:
-            with open("data/wildchat_creative.pkl", "rb") as infile:
-                persona_text = pickle.load(infile)
+        with open(f"data/wildchat_{args.persona_type}.pkl", "rb") as infile:
+            persona_text = pickle.load(infile)
         for i in tqdm(range(len(df))):
             for prompt_type in ["original_post", "flipped_story"]:
                 for j in tqdm(range(len(persona_text))):
