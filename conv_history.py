@@ -386,7 +386,7 @@ User information:
                     total=len(texts),
                 )
             ]
-        for i in tqdm(range(len(persona_types) * len(df_persona))):
+        for i in tqdm(range(len(persona_types) * len(df_personas))):
             persona_type = persona_types[i % len(persona_types)]
             idx = i // len(persona_types)
             df_personas.loc[idx, persona_type] = output[i]
