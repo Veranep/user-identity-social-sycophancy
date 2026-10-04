@@ -6,6 +6,7 @@ import os
 from openai import OpenAI
 import numpy as np
 import pandas as pd
+import pickle
 from tqdm import tqdm
 import torch
 from torch.utils.data import Dataset
