@@ -147,16 +147,9 @@ if __name__ == "__main__":
         df_creative = pd.read_csv("data/wildchat_creative.csv")
 
     else:
-        print("Filtering wildchat")
+        print("Filtering infinity-chat")
         if args.token:
             login(args.token)
-
-        # wildchat = (
-        #     load_dataset("allenai/WildChat-1M")["train"]
-        #     .filter(lambda example: example["language"] == "English")
-        #     .shuffle(seed=42)
-        # )
-        # col = "conversation"
 
         wildchat = load_dataset("liweijiang/infinite-chats-taxonomy")[
             "train"
@@ -166,7 +159,6 @@ if __name__ == "__main__":
         career = []
         creative = []
         for i in tqdm(range(len(wildchat))):
-            # text = " ".join([t["content"].lower() for t in wildchat[i][col][:2]])
             text = wildchat[i][col][0]["content"].lower()
             if any([e in text for e in exclude]) or text.split()[0] in [
                 "write",
@@ -180,8 +172,6 @@ if __name__ == "__main__":
                 [c in text for c in creative_words]
             ):
                 creative.append(wildchat[i][col][:10])
-            # elif any([c in text for c in creative_words]):
-            #     print(wildchat[i][col])
             if i % 1000 == 0:
                 print("Career: ", len(career), ", Creative: ", len(creative))
 
