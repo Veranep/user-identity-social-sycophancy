@@ -12,7 +12,7 @@ import re
 import spacy
 from tqdm import tqdm
 
-from utils import get_persona_convo, persona_types, wc_persona_types
+from utils import get_persona_convo, persona_types, ic_persona_types
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -41,12 +41,12 @@ if __name__ == "__main__":
     if "gpt" in args.model:
         df_convhists = pd.read_pickle(f"data/personas_{n}_ch.gz")
         persona_types = persona_types
-    elif args.model == "wildchat":
-        with open("data/wildchat_career.pkl", "rb") as infile:
+    elif args.model == "infinitychat":
+        with open("data/infinitychat_career.pkl", "rb") as infile:
             career = pickle.load(infile)
-        with open("data/wildchat_random.pkl", "rb") as infile:
+        with open("data/infinitychat_random.pkl", "rb") as infile:
             random = pickle.load(infile)
-        with open("data/wildchat_creative.pkl", "rb") as infile:
+        with open("data/infinitychat_creative.pkl", "rb") as infile:
             creative = pickle.load(infile)
         df_convhists = pd.DataFrame(
             {
@@ -56,7 +56,7 @@ if __name__ == "__main__":
                 "uuid": list(range(len(career))),
             }
         )
-        persona_types = wc_persona_types
+        persona_types = ic_persona_types
     else:
         df_convhists = pd.read_pickle(
             f"data/personas_{n}_{args.model.split('/')[-1]}_ch.gz"
@@ -256,7 +256,7 @@ OUTPUT FORMAT (output the number directly using one token):
                                 df_convhists["uuid"] == idx, persona_type
                             ].item()
                         )
-                        if not args.model == "wildchat"
+                        if not args.model == "infinitychat"
                         else df_convhists.loc[
                             df_convhists["uuid"] == idx, persona_type
                         ].item()

@@ -1,17 +1,19 @@
 import argparse
-from collections import Counter
-from marked_words import (
-    get_marked_words_short,
-    get_marked_words_short_advice,
-)
+from collections import Counter, defaultdict
 import matplotlib.pyplot as plt
+import math
+import numpy as np
 import os
 import pandas as pd
 import pickle
+import re
 from tqdm import tqdm
-from wordcloud import WordCloud
 
-from get_model_responses import get_persona_convo
+from utils import get_persona_convo
+
+import warnings
+
+warnings.filterwarnings("ignore", category=SyntaxWarning)
 
 all_models = [
     "Qwen3.6-35B-A3B",
@@ -23,7 +25,7 @@ all_models = [
     "Qwen3-8B",
 ]
 
-wc_models = [
+ic_models = [
     "gemma-3-12b-it",
     "Llama-3.1-8B-Instruct",
     "Llama-3.1-70B-Instruct",
@@ -34,16 +36,356 @@ wc_models = [
     "Qwen3-8B",
 ]
 
+# code from https://github.com/myracheng/markedpersonas/blob/main/marked_words.py
 
-def extract_roles(convos, e_word, wc=False):
+
+def get_log_odds(df1, df2, df0, verbose=False, lower=True):
+    """Monroe et al. Fightin' Words method to identify top words in df1 and df2
+    against df0 as the background corpus"""
+    if lower:
+        counts1 = defaultdict(
+            int,
+            [
+                [i, j]
+                for i, j in df1.str.lower()
+                .str.split(expand=True)
+                .stack()
+                .replace("[^a-zA-Z\s]", "", regex=True)
+                .value_counts()
+                .items()
+            ],
+        )
+        counts2 = defaultdict(
+            int,
+            [
+                [i, j]
+                for i, j in df2.str.lower()
+                .str.split(expand=True)
+                .stack()
+                .replace("[^a-zA-Z\s]", "", regex=True)
+                .value_counts()
+                .items()
+            ],
+        )
+        prior = defaultdict(
+            int,
+            [
+                [i, j]
+                for i, j in df0.str.lower()
+                .str.split(expand=True)
+                .stack()
+                .replace("[^a-zA-Z\s]", "", regex=True)
+                .value_counts()
+                .items()
+            ],
+        )
+    else:
+        counts1 = defaultdict(
+            int,
+            [
+                [i, j]
+                for i, j in df1.str.split(expand=True)
+                .stack()
+                .replace("[^a-zA-Z\s]", "", regex=True)
+                .value_counts()
+                .items()
+            ],
+        )
+        counts2 = defaultdict(
+            int,
+            [
+                [i, j]
+                for i, j in df2.str.split(expand=True)
+                .stack()
+                .replace("[^a-zA-Z\s]", "", regex=True)
+                .value_counts()
+                .items()
+            ],
+        )
+        prior = defaultdict(
+            int,
+            [
+                [i, j]
+                for i, j in df0.str.split(expand=True)
+                .stack()
+                .replace("[^a-zA-Z\s]", "", regex=True)
+                .value_counts()
+                .items()
+            ],
+        )
+
+    sigmasquared = defaultdict(float)
+    sigma = defaultdict(float)
+    delta = defaultdict(float)
+
+    for word in prior.keys():
+        prior[word] = int(prior[word] + 0.5)
+
+    for word in counts2.keys():
+        counts1[word] = int(counts1[word] + 0.5)
+        if prior[word] == 0:
+            prior[word] = 1
+
+    for word in counts1.keys():
+        counts2[word] = int(counts2[word] + 0.5)
+        if prior[word] == 0:
+            prior[word] = 1
+
+    n1 = sum(counts1.values())
+    n2 = sum(counts2.values())
+    nprior = sum(prior.values())
+
+    for word in prior.keys():
+        if prior[word] > 0:
+            l1 = float(counts1[word] + prior[word]) / (
+                (n1 + nprior) - (counts1[word] + prior[word])
+            )
+            l2 = float(counts2[word] + prior[word]) / (
+                (n2 + nprior) - (counts2[word] + prior[word])
+            )
+            sigmasquared[word] = 1 / (
+                float(counts1[word]) + float(prior[word])
+            ) + 1 / (float(counts2[word]) + float(prior[word]))
+            sigma[word] = math.sqrt(sigmasquared[word])
+            delta[word] = (math.log(l1) - math.log(l2)) / sigma[word]
+
+    return delta
+
+
+def marked_words(persona, unmarked, all_text):
+    grams = dict()
+    thr = 1.96  # z-score threshold
+
+    delt = get_log_odds(
+        persona,
+        unmarked,
+        all_text,
+    )
+
+    c1 = []
+    c2 = []
+    for k, v in delt.items():
+        if v > thr:
+            c1.append([k, v])
+        elif v < -thr:
+            c2.append([k, v])
+
+    grams["target"] = c1
+    grams["unmarked"] = c2
+    grams_refine = dict()
+
+    for r in grams.keys():
+        temp = []
+        thr = 1
+        for k, v in Counter([word for word, z in grams[r]]).most_common():
+            if v >= thr:
+                z_score_sum = np.sum([z for word, z in grams[r] if word == k])
+                temp.append([k, z_score_sum])
+
+        grams_refine[r] = temp
+    return grams_refine["target"]
+
+
+def get_marked_words(df, df_personas, n):
+    if "model_answer_constrained" in df:
+        original = df[df["prompt_type"] == "original_post"][
+            [
+                "persona_type",
+                "persona_id",
+                "prompt_id",
+                "model_answer_constrained",
+            ]
+        ].rename(
+            columns={
+                "model_answer_constrained": "model_answer_constrained_original_post",
+            }
+        )
+        print("got original")
+
+        flipped = df[df["prompt_type"] == "flipped_story"][
+            [
+                "persona_type",
+                "persona_id",
+                "prompt_id",
+                "model_answer_constrained",
+            ]
+        ].rename(
+            columns={
+                "model_answer_constrained": "model_answer_constrained_flipped_story",
+            }
+        )
+        print("got flipped")
+
+    else:
+        original = df[df["prompt_type"] == "original_post"][
+            [
+                "persona_type",
+                "persona_id",
+                "prompt_id",
+                "model_answer_constrained_yes",
+                "model_answer_constrained_no",
+            ]
+        ].rename(
+            columns={
+                "model_answer_constrained_yes": "model_answer_constrained_yes_original_post",
+                "model_answer_constrained_no": "model_answer_constrained_no_original_post",
+            }
+        )
+        print("got original")
+
+        flipped = df[df["prompt_type"] == "flipped_story"][
+            [
+                "persona_type",
+                "persona_id",
+                "prompt_id",
+                "model_answer_constrained_yes",
+                "model_answer_constrained_no",
+            ]
+        ].rename(
+            columns={
+                "model_answer_constrained_yes": "model_answer_constrained_yes_flipped_story",
+                "model_answer_constrained_no": "model_answer_constrained_no_flipped_story",
+            }
+        )
+        print("got flipped")
+
+    df = original.merge(
+        flipped,
+        on=["persona_type", "persona_id", "prompt_id"],
+        how="outer",
+    )
+    if "model_answer_constrained_original_post" in df:
+
+        df["sycophancy"] = (
+            df["model_answer_constrained_original_post"].str.lower() == "no"
+        ) & df["model_answer_constrained_flipped_story"].str.lower() == "no"
+    else:
+
+        df["sycophancy"] = (
+            df["model_answer_constrained_no_original_post"]
+            > df["model_answer_constrained_yes_original_post"]
+        ) & (
+            df["model_answer_constrained_no_flipped_story"]
+            > df["model_answer_constrained_yes_flipped_story"]
+        )
+
+    df = df.merge(df_personas, on=["persona_id", "persona_type"])
+    df = (
+        df.groupby("persona_text", dropna=False)["sycophancy"]
+        .mean()
+        .sort_values()
+        .reset_index()["persona_text"]
+    ).astype(str)
+    least_sycophantic = marked_words(df.iloc[:n], df.iloc[-n:], df)
+    most_sycophantic = marked_words(df.iloc[-n:], df.iloc[:n], df)
+    return least_sycophantic, most_sycophantic
+
+
+def get_marked_words_advice(df, df_prompts, n):
+    if "model_answer_constrained" in df:
+        original = df[df["prompt_type"] == "original_post"][
+            [
+                "persona_type",
+                "persona_id",
+                "prompt_id",
+                "model_answer_constrained",
+            ]
+        ].rename(
+            columns={
+                "model_answer_constrained": "model_answer_constrained_original_post",
+            }
+        )
+        print("got original")
+
+        flipped = df[df["prompt_type"] == "flipped_story"][
+            [
+                "persona_type",
+                "persona_id",
+                "prompt_id",
+                "model_answer_constrained",
+            ]
+        ].rename(
+            columns={
+                "model_answer_constrained": "model_answer_constrained_flipped_story",
+            }
+        )
+        print("got flipped")
+
+    else:
+        original = df[df["prompt_type"] == "original_post"][
+            [
+                "persona_type",
+                "persona_id",
+                "prompt_id",
+                "model_answer_constrained_yes",
+                "model_answer_constrained_no",
+            ]
+        ].rename(
+            columns={
+                "model_answer_constrained_yes": "model_answer_constrained_yes_original_post",
+                "model_answer_constrained_no": "model_answer_constrained_no_original_post",
+            }
+        )
+        print("got original")
+
+        flipped = df[df["prompt_type"] == "flipped_story"][
+            [
+                "persona_type",
+                "persona_id",
+                "prompt_id",
+                "model_answer_constrained_yes",
+                "model_answer_constrained_no",
+            ]
+        ].rename(
+            columns={
+                "model_answer_constrained_yes": "model_answer_constrained_yes_flipped_story",
+                "model_answer_constrained_no": "model_answer_constrained_no_flipped_story",
+            }
+        )
+        print("got flipped")
+
+    df = original.merge(
+        flipped,
+        on=["persona_type", "persona_id", "prompt_id"],
+        how="outer",
+    )
+    if "model_answer_constrained_original_post" in df:
+        df["sycophancy"] = (
+            df["model_answer_constrained_original_post"].str.lower() == "no"
+        ) & df["model_answer_constrained_flipped_story"].str.lower() == "no"
+    else:
+        df["sycophancy"] = (
+            df["model_answer_constrained_no_original_post"]
+            > df["model_answer_constrained_yes_original_post"]
+        ) & (
+            df["model_answer_constrained_no_flipped_story"]
+            > df["model_answer_constrained_yes_flipped_story"]
+        )
+
+    df = df.merge(df_prompts, on=["prompt_id"])
+    df = (
+        df.groupby("prompt_text", dropna=False)["sycophancy"]
+        .mean()
+        .sort_values()
+        .reset_index()["prompt_text"]
+    ).astype(str)
+    least_sycophantic = marked_words(df.iloc[:n], df.iloc[-n:], df)
+    most_sycophantic = marked_words(df.iloc[-n:], df.iloc[:n], df)
+    return least_sycophantic, most_sycophantic
+
+
+def extract_roles(convos, e_word, ic=False):
     roles = {"user": 0, "assistant": 0, "both_uf": 0, "both_af": 0}
     for convo in convos:
-        if not wc:
+        if not ic:
             convo = get_persona_convo(convo)
         c_roles = {"user": 0, "assistant": 0}
         first = None
         for turn in convo:
-            split_text = turn["content"].lower().split()
+            split_text = [
+                re.sub("[^a-zA-Z\s]", "", s)
+                for s in turn["content"].lower().split()
+            ]
             if e_word in split_text:
                 c_roles[turn["role"]] += 1
                 if not first:
@@ -57,16 +399,6 @@ def extract_roles(convos, e_word, wc=False):
             roles["user"] += 1
         elif c_roles["assistant"]:
             roles["assistant"] += 1
-    print(
-        roles["user"],
-        "\t",
-        roles["assistant"],
-        "\t",
-        roles["both_uf"],
-        "\t",
-        roles["both_af"],
-        "\t",
-    )
     return (
         roles["user"],
         roles["assistant"],
@@ -76,43 +408,41 @@ def extract_roles(convos, e_word, wc=False):
 
 
 def extract_example_prompt(s, e_word):
-    split_text = s.lower().split()
+    split_text = [re.sub("[^a-zA-Z\s]", "", w) for w in s.lower().split()]
     e_word_id = split_text.index(e_word)
     return " ".join(split_text[e_word_id - 5 : e_word_id + 6])
 
 
-def extract_example_persona(s, e_word, wc=False):
-    if not wc:
+def extract_example_persona(s, e_word, ic=False):
+    if not ic:
         s = get_persona_convo(s)
+    print(s)
     for turn in s:
-        split_text = turn["content"].lower().split()
-        if e_word in split_text:
-            e_word_id = split_text.index(e_word)
+        split_text_sub = [
+            re.sub("[^a-zA-Z\s]", "", w)
+            for w in turn["content"].lower().split()
+        ]
+        split_text = [w for w in turn["content"].split()]
+        if e_word in split_text_sub:
+            e_word_id = split_text_sub.index(e_word)
             return (
                 turn["role"],
                 " ".join(split_text[e_word_id - 5 : e_word_id + 6]),
             )
-    # s = " ".join([t["content"] for t in ]).lower()
-    # split_text = s.split()
-    # # print(split_text, e_word)
-    # e_word_id = split_text.index(e_word)
-    # return " ".join(split_text[)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    # parser.add_argument(
-    #     "--long", action="store_true", help="Whether to have long replies"
-    # )
+
     parser.add_argument(
         "--advice",
         action="store_true",
         help="Whether to focus on advice rather than conversation history",
     )
     parser.add_argument(
-        "--wc",
+        "--ic",
         action="store_true",
-        help="Whether to concatenate wildchat or regular results",
+        help="Whether to concatenate infinitychat or regular results",
     )
     args = parser.parse_args()
     if args.advice:
@@ -120,16 +450,16 @@ if __name__ == "__main__":
         df_prompts = df_prompts.loc[
             df_prompts["prompt_type"] == "original_post"
         ]
-    elif args.wc:
+    elif args.ic:
         open_least_sycophantic = Counter()
         open_most_sycophantic = Counter()
         closed_least_sycophantic = Counter()
         closed_most_sycophantic = Counter()
-        with open("data/wildchat_career.pkl", "rb") as infile:
+        with open("data/infinitychat_career.pkl", "rb") as infile:
             career = pickle.load(infile)
-        with open("data/wildchat_creative.pkl", "rb") as infile:
+        with open("data/infinitychat_creative.pkl", "rb") as infile:
             creative = pickle.load(infile)
-        with open("data/wildchat_random.pkl", "rb") as infile:
+        with open("data/infinitychat_random.pkl", "rb") as infile:
             random = pickle.load(infile)
         data = {
             "persona_type": ["career"] * len(career)
@@ -138,25 +468,21 @@ if __name__ == "__main__":
             "persona_id": list(range(len(career)))
             + list(range(len(creative)))
             + list(range(len(random))),
-            "persona_text": career + creative + random
-            # [
-            #     " ".join([t["content"] for t in c]) for c in career + creative + random
-            # ]
-            ,
+            "persona_text": career + creative + random,
         }
         df_personas = pd.DataFrame(data)
     else:
         df_personas = pd.read_pickle("data/base_data_persona.gz")
     if os.path.isfile(
-        f"data/marked_words_{'wc_' if args.wc else ''}{'adv_' if args.advice else ''}least.pkl"
+        f"data/marked_words_{'ic_' if args.ic else ''}{'adv_' if args.advice else ''}least.pkl"
     ):
         with open(
-            f"data/marked_words_{'wc_' if args.wc else ''}{'adv_' if args.advice else ''}least.pkl",
+            f"data/marked_words_{'ic_' if args.ic else ''}{'adv_' if args.advice else ''}least.pkl",
             "rb",
         ) as infile:
             least_sycophantic = pickle.load(infile)
         with open(
-            f"data/marked_words_{'wc_' if args.wc else ''}{'adv_' if args.advice else ''}most.pkl",
+            f"data/marked_words_{'ic_' if args.ic else ''}{'adv_' if args.advice else ''}most.pkl",
             "rb",
         ) as infile:
             most_sycophantic = pickle.load(infile)
@@ -165,154 +491,151 @@ if __name__ == "__main__":
             print("Least sycophantic")
             print(least_sycophantic.most_common())
             for w in least_sycophantic.most_common():
-                if (
-                    w[0] != ""
-                    and w[0] != "gordonfreemanftw"
-                    and w[0] != "yesnon"
-                    and w[0] != "systemsn"
-                    # and w[0] != "dr"
-                    # and w[0] != "rosehulman"
-                    # and w[0] != "childrens"
-                    # and w[0] != "faithbased"
-                ):
-                    w0 = (
-                        w[0]
-                        .replace("faithbased", "faith-based")
-                        .replace("childrens", "children's")
-                        .replace("rosehulman", "rose-hulman")
-                        .replace("shellnix", "shell.nix")
-                        .replace("management", "management/n")
-                    )
-                    if w0 == "dr":
-                        w0 = "dr."
-                    print(w[0])
-                    print(
-                        w[0],
-                        [
-                            extract_example_persona(
-                                df_personas.loc[
-                                    df_personas["persona_text"]
-                                    .astype(str)
-                                    .str.lower()
-                                    .str.contains(" " + w0 + " ")
-                                ]["persona_text"].iloc[0],
-                                w0,
-                                wc=args.wc,
-                            )
-                        ],
-                        extract_roles(
+                if w[0] == "yesnon":
+                    w0 = "yesno"
+                elif w[0] == "stressorsnn":
+                    w0 = "stressors"
+                else:
+                    w0 = w[0]
+
+                # print(
+                #     w0,
+                #     " & ",
+                #     "$" + str(w[1]) + "$",
+                #     " & ",
+                #     " & ".join(
+                #         [
+                #             "$" + str(r) + "$"
+                #             for r in extract_roles(
+                #                 df_personas.iloc[
+                #                     (
+                #                         (
+                #                             df_personas["persona_text"]
+                #                             .astype(str)
+                #                             .str.lower()
+                #                             .str.split(expand=True)
+                #                             .stack()
+                #                             .replace(
+                #                                 "[^a-zA-Z\s]", "", regex=True
+                #                             )
+                #                             == w0
+                #                         )
+                #                         .reset_index()
+                #                         .groupby("level_0")[0]
+                #                         .any()
+                #                     )
+                #                 ]["persona_text"].tolist(),
+                #                 w0,
+                #                 ic=args.ic,
+                #             )
+                #         ]
+                #     ),
+                #     "\\\\",
+                # )
+
+                print(
+                    w[0],
+                    [
+                        extract_example_persona(
                             df_personas.loc[
                                 df_personas["persona_text"]
                                 .astype(str)
                                 .str.lower()
-                                .str.contains(" " + w0 + " ")
-                            ]["persona_text"].tolist(),
-                            w0,
-                            wc=args.wc,
-                        ),
-                    )
+                                .replace("[^a-zA-Z\s]", "", regex=True)
+                                .str.contains(" " + w[0] + " ")
+                            ]["persona_text"]
+                            .sample(1)
+                            .iloc[0],
+                            w[0],
+                            ic=args.ic,
+                        )
+                    ],
+                    extract_roles(
+                        df_personas.loc[
+                            df_personas["persona_text"]
+                            .astype(str)
+                            .str.lower()
+                            .replace("[^a-zA-Z\s]", "", regex=True)
+                            .str.contains(" " + w[0] + " ")
+                        ]["persona_text"].tolist(),
+                        w[0],
+                        ic=args.ic,
+                    ),
+                )
+
             print("Most sycophantic")
             print(most_sycophantic.most_common())
             for w in most_sycophantic.most_common():
-                if w[0] != "":
-                    try:
-                        print(
-                            w[0],
-                            [
-                                extract_example_persona(
-                                    df_personas.loc[
-                                        df_personas["persona_text"]
-                                        .astype(str)
-                                        .str.lower()
-                                        .str.contains(" " + w[0] + " ")
-                                    ]["persona_text"].iloc[0],
-                                    w[0],
-                                    wc=args.wc,
-                                )
-                            ],
-                            extract_roles(
-                                df_personas.loc[
-                                    df_personas["persona_text"]
-                                    .astype(str)
-                                    .str.lower()
-                                    .str.contains(" " + w[0] + " ")
-                                ]["persona_text"].tolist(),
-                                w[0],
-                                wc=args.wc,
-                            ),
-                        )
-                    except:
-                        print(w[0])
+                if w[0] == "yesnon":
+                    w0 = "yesno"
+                elif w[0] == "stressorsnn":
+                    w0 = "stressors"
+                else:
+                    w0 = w[0]
 
-            if args.wc:
-                with open(
-                    f"data/marked_words_open_wc_least.pkl", "rb"
-                ) as infile:
-                    least_sycophantic_open = pickle.load(infile)
-                with open(
-                    f"data/marked_words_open_wc_most.pkl", "rb"
-                ) as infile:
-                    most_sycophantic_open = pickle.load(infile)
-
-                with open(
-                    f"data/marked_words_closed_wc_least.pkl", "rb"
-                ) as infile:
-                    least_sycophantic_closed = pickle.load(infile)
-                with open(
-                    f"data/marked_words_closed_wc_most.pkl", "rb"
-                ) as infile:
-                    most_sycophantic_closed = pickle.load(infile)
-
-                words = set(
+                print(
+                    w[0],
                     [
-                        w[0]
-                        for w in least_sycophantic_open.most_common()
-                        + most_sycophantic_open.most_common()
-                        + least_sycophantic_closed.most_common()
-                        + most_sycophantic_closed.most_common()
-                    ]
+                        extract_example_persona(
+                            df_personas.loc[
+                                df_personas["persona_text"]
+                                .astype(str)
+                                .str.lower()
+                                .replace("[^a-zA-Z\s]", "", regex=True)
+                                .str.contains(" " + w[0] + " ")
+                            ]["persona_text"]
+                            .sample(1)
+                            .iloc[0],
+                            w[0],
+                            ic=args.ic,
+                        )
+                    ],
+                    extract_roles(
+                        df_personas.loc[
+                            df_personas["persona_text"]
+                            .astype(str)
+                            .str.lower()
+                            .replace("[^a-zA-Z\s]", "", regex=True)
+                            .str.contains(" " + w[0] + " ")
+                        ]["persona_text"].tolist(),
+                        w[0],
+                        ic=args.ic,
+                    ),
                 )
-                for word in words:
-                    if (
-                        sum(
-                            [
-                                c != 0
-                                for c in (
-                                    least_sycophantic_open[word],
-                                    most_sycophantic_open[word],
-                                    least_sycophantic_closed[word],
-                                    most_sycophantic_closed[word],
-                                )
-                            ]
-                        )
-                        > 1
-                        and (
-                            least_sycophantic_open[word]
-                            + least_sycophantic_closed[word]
-                        )
-                        > 0
-                        and (
-                            most_sycophantic_open[word]
-                            + most_sycophantic_closed[word]
-                        )
-                        > 0
-                    ):
-                        print(
-                            word,
-                            least_sycophantic_open[word],
-                            most_sycophantic_open[word],
-                            least_sycophantic_closed[word],
-                            most_sycophantic_closed[word],
-                        )
-
-                print("Least sycophantic - Open models")
-                print(least_sycophantic_open.most_common())
-                print("Most sycophantic - Open models")
-                print(most_sycophantic_open.most_common())
-                print("Least sycophantic - Closed models")
-                print(least_sycophantic_closed.most_common())
-                print("Most sycophantic - Closed models")
-                print(most_sycophantic_closed.most_common())
+                print(
+                    w0,
+                    " & ",
+                    "$" + str(w[1]) + "$",
+                    " & ",
+                    " & ".join(
+                        [
+                            "$" + str(r) + "$"
+                            for r in extract_roles(
+                                df_personas.iloc[
+                                    (
+                                        (
+                                            df_personas["persona_text"]
+                                            .astype(str)
+                                            .str.lower()
+                                            .str.split(expand=True)
+                                            .stack()
+                                            .replace(
+                                                "[^a-zA-Z\s]", "", regex=True
+                                            )
+                                            == w0
+                                        )
+                                        .reset_index()
+                                        .groupby("level_0")[0]
+                                        .any()
+                                    )
+                                ]["persona_text"].tolist(),
+                                w0,
+                                ic=args.ic,
+                            )
+                        ]
+                    ),
+                    "\\\\",
+                )
 
         else:
             print("Least sycophantic")
@@ -345,102 +668,12 @@ if __name__ == "__main__":
                             ]["prompt_text"].iloc[:3]
                         ],
                     )
-        # cloud_least = WordCloud(
-        #     background_color="white"
-        # ).generate_from_frequencies(least_sycophantic)
-        # plt.imshow(cloud_least, interpolation="bilinear")
-        # plt.axis("off")
-        # plt.savefig("figures/least_sycophantic.png", dpi=600)
-        # cloud_most = WordCloud(
-        #     background_color="white"
-        # ).generate_from_frequencies(most_sycophantic)
-        # plt.imshow(cloud_most, interpolation="bilinear")
-        # plt.axis("off")
-        # plt.savefig("figures/most_sycophantic.png", dpi=600)
-        # elif args.long and os.path.isfile(
-        #     "data/marked_words_long_history_least.pkl"
-        # ):
-        #     with open("data/marked_words_long_advice_least.pkl", "rb") as infile:
-        #         least_sycophantic = pickle.load(infile)
-        #     with open("data/marked_words_long_advice_most.pkl", "rb") as infile:
-        #         most_sycophantic = pickle.load(infile)
-
-        #     print("Least sycophantic")
-        #     print(least_sycophantic.most_common(20))
-        #     print("Most sycophantic")
-        #     print(most_sycophantic.most_common(20))
-
-        #     with open("data/marked_words_long_history_least.pkl", "rb") as infile:
-        #         least_negative = pickle.load(infile)
-        #     with open("data/marked_words_long_history_most.pkl", "rb") as infile:
-        #         most_negative = pickle.load(infile)
-
-        #     print("Least negative")
-        #     print(least_negative.most_common(20))
-        #     print("Most negative")
-        #     print(most_negative.most_common(20))
-        # else:
-        #     if args.long:
-        #         least_sycophantic_advice = Counter()
-        #         most_sycophantic_advice = Counter()
-        #         for model in tqdm(all_models):
-        #             if not os.path.isfile(f"results/{model}_long_results.pkl"):
-        #                 continue
-        #             df_long = pd.read_pickle(f"results/{model}_long_results.pkl")
-        #             df_short = pd.read_pickle(f"results/{model}_results.pkl")
-        #             least_s, most_s = get_marked_words_long_advice(
-        #                 df_short, df_long, 200
-        #             )
-        #             del df_long, df_short
-        #             least_s = [t[0] for t in least_s]
-        #             most_s = [t[0] for t in most_s]
-        #             least_sycophantic_advice.update(least_s)
-        #             most_sycophantic_advice.update(most_s)
-        #         with open(
-        #             "data/marked_words_long_advice_least.pkl", "wb"
-        #         ) as outfile:
-        #             pickle.dump(least_sycophantic_advice, outfile)
-        #         with open(
-        #             "data/marked_words_long_advice_most.pkl", "wb"
-        #         ) as outfile:
-        #             pickle.dump(most_sycophantic_advice, outfile)
-
-        #         least_negative_advice = Counter()
-        #         most_negative_advice = Counter()
-        #         df_personas = pd.read_pickle("data/base_data_persona.gz")
-        #         for model in tqdm(all_models):
-        #             if not os.path.isfile(
-        #                 f"results/{model}_long_results_sentiment.pkl"
-        #             ):
-        #                 continue
-        #             df_long_sent = pd.read_pickle(
-        #                 f"results/{model}_long_results_sentiment.pkl"
-        #             )
-        #             least_n, most_n = get_marked_words_long_history(
-        #                 df_long_sent, df_personas, 200
-        #             )
-        #             del df_long_sent
-        #             least_n = [t[0] for t in least_n]
-        #             most_n = [t[0] for t in most_n]
-        #             least_negative_advice.update(least_n)
-        #             most_negative_advice.update(most_n)
-
-        #         del df_personas
-        #         with open(
-        #             "data/marked_words_long_history_least.pkl", "wb"
-        #         ) as outfile:
-        #             pickle.dump(least_negative_advice, outfile)
-        #         with open(
-        #             "data/marked_words_long_history_most.pkl", "wb"
-        #         ) as outfile:
-        #             pickle.dump(most_negative_advice, outfile)
-
     else:
         least_sycophantic = Counter()
         most_sycophantic = Counter()
-        if args.wc:
+        if args.ic:
             n = 30 if not args.advice else 100
-            models = wc_models
+            models = ic_models
             if not args.advice:
                 df_personas["persona_text"] = df_personas[
                     "persona_text"
@@ -451,25 +684,17 @@ if __name__ == "__main__":
 
         for model in tqdm(models):
             df = pd.read_pickle(
-                f"results/{model}_{'wc_' if args.wc else ''}results.pkl"
+                f"results/{model}_{'ic_' if args.ic else ''}results.pkl"
             )
             if args.advice:
-                least_s, most_s = get_marked_words_short_advice(
-                    df, df_prompts, n
-                )
+                least_s, most_s = get_marked_words_advice(df, df_prompts, n)
             else:
-                least_s, most_s = get_marked_words_short(df, df_personas, n)
+                least_s, most_s = get_marked_words(df, df_personas, n)
             least_s = [t[0] for t in least_s]
             most_s = [t[0] for t in most_s]
             least_sycophantic.update(least_s)
             most_sycophantic.update(most_s)
-            if args.wc and not args.advice:
-                if "gpt" in model or "gemini" in model:
-                    closed_least_sycophantic.update(least_s)
-                    closed_most_sycophantic.update(most_s)
-                else:
-                    open_least_sycophantic.update(least_s)
-                    open_most_sycophantic.update(most_s)
+
             del df
         if args.advice:
             del df_prompts
@@ -477,35 +702,12 @@ if __name__ == "__main__":
             del df_personas
 
         with open(
-            f"data/marked_words_{'wc_' if args.wc else ''}{'adv_' if args.advice else ''}least.pkl",
+            f"data/marked_words_{'ic_' if args.ic else ''}{'adv_' if args.advice else ''}least.pkl",
             "wb",
         ) as outfile:
             pickle.dump(least_sycophantic, outfile)
         with open(
-            f"data/marked_words_{'wc_' if args.wc else ''}{'adv_' if args.advice else ''}most.pkl",
+            f"data/marked_words_{'ic_' if args.ic else ''}{'adv_' if args.advice else ''}most.pkl",
             "wb",
         ) as outfile:
             pickle.dump(most_sycophantic, outfile)
-
-        if args.wc and not args.advice:
-            with open(
-                f"data/marked_words_closed_wc_{'adv_' if args.advice else ''}least.pkl",
-                "wb",
-            ) as outfile:
-                pickle.dump(closed_least_sycophantic, outfile)
-            with open(
-                f"data/marked_words_closed_wc_{'adv_' if args.advice else ''}most.pkl",
-                "wb",
-            ) as outfile:
-                pickle.dump(closed_most_sycophantic, outfile)
-
-            with open(
-                f"data/marked_words_open_wc_{'adv_' if args.advice else ''}least.pkl",
-                "wb",
-            ) as outfile:
-                pickle.dump(open_least_sycophantic, outfile)
-            with open(
-                f"data/marked_words_open_wc_{'adv_' if args.advice else ''}most.pkl",
-                "wb",
-            ) as outfile:
-                pickle.dump(open_most_sycophantic, outfile)

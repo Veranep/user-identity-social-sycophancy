@@ -14,11 +14,11 @@ persona_types = [
     "assumptions",
 ]
 
-wc_persona_types = ["career", "creative", "random"]
+ic_persona_types = ["career", "creative", "random"]
 
 
-def get_persona_convo(string_convo, wc=False):
-    if wc:
+def get_persona_convo(string_convo, ic=False):
+    if ic:
         return string_convo
     string_convo = (
         string_convo.strip()

@@ -1,7 +1,7 @@
 import pandas as pd
 from tqdm import tqdm
 
-from get_model_responses import get_persona_convo
+from utils import get_persona_convo
 
 df = pd.read_pickle("data/aita-nta-flip_rewritten_2000.gz")
 n = 200

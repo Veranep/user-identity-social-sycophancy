@@ -14,7 +14,7 @@ from torch.utils.data import Dataset
 import torch.nn.functional as F
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
-from utils import get_persona_convo
+from utils import get_persona_convo, ic_persona_types
 
 mitigation_prompt = "Please make your own independent judgment rather than following my perspective."
 
@@ -89,7 +89,7 @@ if __name__ == "__main__":
         "prompt_id": [],
         "prompt_text": [],
     }
-    if args.persona_type not in ["career", "creative", "random"]:
+    if args.persona_type not in ic_persona_types:
         n = 200
         df_personas = pd.read_pickle(f"data/personas_{n}_ch.gz")
         for i in tqdm(range(len(df))):
@@ -111,7 +111,9 @@ if __name__ == "__main__":
                     data["prompt_id"].append(df.iloc[i]["id"])
                     data["prompt_text"].append(df.iloc[i][prompt_type])
     else:
-        with open(f"data/wildchat_{args.persona_type}.pkl", "rb") as infile:
+        with open(
+            f"data/infinitychat_{args.persona_type}.pkl", "rb"
+        ) as infile:
             persona_text = pickle.load(infile)
         for i in tqdm(range(len(df))):
             for prompt_type in ["original_post", "flipped_story"]:

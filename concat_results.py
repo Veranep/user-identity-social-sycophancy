@@ -7,7 +7,7 @@ import pandas as pd
 import pickle
 from tqdm import tqdm
 
-from utils import persona_types, wc_persona_types
+from utils import persona_types, ic_persona_types
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -19,9 +19,9 @@ if __name__ == "__main__":
         help="Model to evaluate",
     )
     parser.add_argument(
-        "--wc",
+        "--ic",
         action="store_true",
-        help="Whether to concatenate wildchat or regular results",
+        help="Whether to concatenate infinitychat or regular results",
     )
     parser.add_argument(
         "--mitigate",
@@ -30,7 +30,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     df = pd.DataFrame([])
-    pts = wc_persona_types if args.wc else persona_types
+    pts = ic_persona_types if args.ic else persona_types
     for persona_type in tqdm(pts):
         df_pt = pd.read_pickle(
             f"results/{args.model.split('/')[-1]}_{persona_type}_{'mitigate_' if args.mitigate else ''}results.pkl"
@@ -60,5 +60,5 @@ if __name__ == "__main__":
         df = pd.concat([df, df_pt], ignore_index=True)
 
     df.to_pickle(
-        f"results/{args.model.split('/')[-1]}_{'mitigate_' if args.mitigate else ''}{'wc_' if args.wc else ''}results.pkl"
+        f"results/{args.model.split('/')[-1]}_{'mitigate_' if args.mitigate else ''}{'ic_' if args.ic else ''}results.pkl"
     )

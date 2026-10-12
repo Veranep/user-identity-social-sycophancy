@@ -124,16 +124,18 @@ if __name__ == "__main__":
         "-token",
         type=str,
         default="",
-        help="Huggingface token that grants access to Wildchat dataset",
+        help="Huggingface token that grants access to Infinitychat dataset",
     )
     args = parser.parse_args()
-    if os.path.isfile("data/wildchat_career_rewritten.csv"):
+    if os.path.isfile("data/infinitychat_career_rewritten.csv"):
         print("Using rewritten data")
         df_career = pd.read_csv(
-            "data/wildchat_career_rewritten.csv", skiprows=4, skipfooter=1
+            "data/infinitychat_career_rewritten.csv", skiprows=4, skipfooter=1
         )[["conversations", "replacement"]]
         df_creative = pd.read_csv(
-            "data/wildchat_creative_rewritten.csv", skiprows=4, skipfooter=1
+            "data/infinitychat_creative_rewritten.csv",
+            skiprows=4,
+            skipfooter=1,
         )[["conversations", "replacement"]]
         df_career["conversations"] = df_career["replacement"].fillna(
             df_career["conversations"]
@@ -141,25 +143,25 @@ if __name__ == "__main__":
         df_creative["conversations"] = df_creative["replacement"].fillna(
             df_creative["conversations"]
         )
-    elif os.path.isfile("data/wildchat_career.csv"):
+    elif os.path.isfile("data/infinitychat_career.csv"):
         print("Using saved data")
-        df_career = pd.read_csv("data/wildchat_career.csv")
-        df_creative = pd.read_csv("data/wildchat_creative.csv")
+        df_career = pd.read_csv("data/infinitychat_career.csv")
+        df_creative = pd.read_csv("data/infinitychat_creative.csv")
 
     else:
         print("Filtering infinity-chat")
         if args.token:
             login(args.token)
 
-        wildchat = load_dataset("liweijiang/infinite-chats-taxonomy")[
+        infinitychat = load_dataset("liweijiang/infinite-chats-taxonomy")[
             "train"
         ].shuffle(seed=42)
         col = "messages"
 
         career = []
         creative = []
-        for i in tqdm(range(len(wildchat))):
-            text = wildchat[i][col][0]["content"].lower()
+        for i in tqdm(range(len(infinitychat))):
+            text = infinitychat[i][col][0]["content"].lower()
             if any([e in text for e in exclude]) or text.split()[0] in [
                 "write",
                 "design",
@@ -167,11 +169,11 @@ if __name__ == "__main__":
             ]:
                 continue
             if len(career) < 100 and any([c in text for c in career_words]):
-                career.append(wildchat[i][col][:10])
+                career.append(infinitychat[i][col][:10])
             elif len(creative) < 100 and any(
                 [c in text for c in creative_words]
             ):
-                creative.append(wildchat[i][col][:10])
+                creative.append(infinitychat[i][col][:10])
             if i % 1000 == 0:
                 print("Career: ", len(career), ", Creative: ", len(creative))
 
@@ -179,20 +181,20 @@ if __name__ == "__main__":
                 break
 
         df_career = pd.DataFrame({"conversations": career})
-        df_career.to_csv("data/wildchat_career.csv")
+        df_career.to_csv("data/infinitychat_career.csv")
         df_creative = pd.DataFrame({"conversations": creative})
-        df_creative.to_csv("data/wildchat_creative.csv")
+        df_creative.to_csv("data/infinitychat_creative.csv")
 
-    if not os.path.isfile("data/wildchat_random.csv"):
-        wildchat = load_dataset("liweijiang/infinite-chats-taxonomy")[
+    if not os.path.isfile("data/infinitychat_random.csv"):
+        infinitychat = load_dataset("liweijiang/infinite-chats-taxonomy")[
             "train"
         ].shuffle(seed=42)
         col = "messages"
         random = []
         career = [eval(c) for c in df_career["conversations"].tolist()]
         creative = [eval(c) for c in df_creative["conversations"].tolist()]
-        for i in tqdm(range(len(wildchat))):
-            text = wildchat[i][col][0]["content"].lower()
+        for i in tqdm(range(len(infinitychat))):
+            text = infinitychat[i][col][0]["content"].lower()
             if any([e in text for e in exclude]) or text.split()[0] in [
                 "write",
                 "design",
@@ -200,14 +202,14 @@ if __name__ == "__main__":
             ]:
                 continue
             if (
-                wildchat[i][col][:10] in career
-                or wildchat[i][col][:10] in creative
-                or wildchat[i][col] in career
-                or wildchat[i][col] in creative
+                infinitychat[i][col][:10] in career
+                or infinitychat[i][col][:10] in creative
+                or infinitychat[i][col] in career
+                or infinitychat[i][col] in creative
             ):
                 continue
 
-            random.append(wildchat[i][col][:10])
+            random.append(infinitychat[i][col][:10])
 
             if len(random) == 100:
                 break
@@ -217,8 +219,8 @@ if __name__ == "__main__":
             df_random["conversations"] = df_random["conversations"].apply(
                 ast.literal_eval
             )
-        df_random.to_csv("data/wildchat_random.csv")
-        with open("data/wildchat_random.pkl", "wb") as outfile:
+        df_random.to_csv("data/infinitychat_random.csv")
+        with open("data/infinitychat_random.pkl", "wb") as outfile:
             pickle.dump(df_random["conversations"].tolist(), outfile)
 
     if type(df_career["conversations"].tolist()[0]) == str:
@@ -231,7 +233,7 @@ if __name__ == "__main__":
     career = df_career["conversations"].tolist()
     creative = df_creative["conversations"].tolist()
 
-    with open("data/wildchat_career.pkl", "wb") as outfile:
+    with open("data/infinitychat_career.pkl", "wb") as outfile:
         pickle.dump(career, outfile)
-    with open("data/wildchat_creative.pkl", "wb") as outfile:
+    with open("data/infinitychat_creative.pkl", "wb") as outfile:
         pickle.dump(creative, outfile)
