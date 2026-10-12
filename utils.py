@@ -16,173 +16,78 @@ persona_types = [
 
 wc_persona_types = ["career", "creative", "random"]
 
-feature_cols = {
-    "emotions": [
-        "admiration",
-        "amusement",
-        "anger",
-        "annoyance",
-        "approval",
-        "caring",
-        "confusion",
-        "curiosity",
-        "desire",
-        "disappointment",
-        "disapproval",
-        "disgust",
-        "embarrassment",
-        "excitement",
-        "fear",
-        "gratitude",
-        "grief",
-        "joy",
-        "love",
-        "nervousness",
-        "optimism",
-        "pride",
-        "realization",
-        "relief",
-        "remorse",
-        "sadness",
-        "surprise",
-        "e_neutral",
-    ],
-    "liwc": [
-        "liwc_Segment",
-        "liwc_WC",
-        "liwc_Analytic",
-        "liwc_Clout",
-        "liwc_Authentic",
-        "liwc_Tone",
-        "liwc_WPS",
-        "liwc_BigWords",
-        "liwc_Dic",
-        "liwc_Linguistic",
-        "liwc_function",
-        "liwc_pronoun",
-        "liwc_ppron",
-        "liwc_i",
-        "liwc_we",
-        "liwc_you",
-        "liwc_shehe",
-        "liwc_they",
-        "liwc_ipron",
-        "liwc_det",
-        "liwc_article",
-        "liwc_number",
-        "liwc_prep",
-        "liwc_auxverb",
-        "liwc_adverb",
-        "liwc_conj",
-        "liwc_negate",
-        "liwc_verb",
-        "liwc_adj",
-        "liwc_quantity",
-        "liwc_Drives",
-        "liwc_affiliation",
-        "liwc_achieve",
-        "liwc_power",
-        "liwc_Cognition",
-        "liwc_allnone",
-        "liwc_cogproc",
-        "liwc_insight",
-        "liwc_cause",
-        "liwc_discrep",
-        "liwc_tentat",
-        "liwc_certitude",
-        "liwc_differ",
-        "liwc_memory",
-        "liwc_Affect",
-        "liwc_tone_pos",
-        "liwc_tone_neg",
-        "liwc_emotion",
-        "liwc_emo_pos",
-        "liwc_emo_neg",
-        "liwc_emo_anx",
-        "liwc_emo_anger",
-        "liwc_emo_sad",
-        "liwc_swear",
-        "liwc_Social",
-        "liwc_socbehav",
-        "liwc_prosocial",
-        "liwc_polite",
-        "liwc_conflict",
-        "liwc_moral",
-        "liwc_comm",
-        "liwc_socrefs",
-        "liwc_family",
-        "liwc_friend",
-        "liwc_female",
-        "liwc_male",
-        "liwc_Culture",
-        "liwc_politic",
-        "liwc_ethnicity",
-        "liwc_tech",
-        "liwc_Lifestyle",
-        "liwc_leisure",
-        "liwc_home",
-        "liwc_work",
-        "liwc_money",
-        "liwc_relig",
-        "liwc_Physical",
-        "liwc_health",
-        "liwc_illness",
-        "liwc_wellness",
-        "liwc_mental",
-        "liwc_substances",
-        "liwc_sexual",
-        "liwc_food",
-        "liwc_death",
-        "liwc_need",
-        "liwc_want",
-        "liwc_acquire",
-        "liwc_lack",
-        "liwc_fulfill",
-        "liwc_fatigue",
-        "liwc_reward",
-        "liwc_risk",
-        "liwc_curiosity",
-        "liwc_allure",
-        "liwc_Perception",
-        "liwc_attention",
-        "liwc_motion",
-        "liwc_space",
-        "liwc_visual",
-        "liwc_auditory",
-        "liwc_feeling",
-        "liwc_time",
-        "liwc_focuspast",
-        "liwc_focuspresent",
-        "liwc_focusfuture",
-        "liwc_Conversation",
-        "liwc_netspeak",
-        "liwc_assent",
-        "liwc_nonflu",
-        "liwc_filler",
-        "liwc_AllPunc",
-        "liwc_Period",
-        "liwc_Comma",
-        "liwc_QMark",
-        "liwc_Exclam",
-        "liwc_Apostro",
-        "liwc_OtherP",
-        "liwc_Emoji",
-    ],
-    "sentiment": ["negative", "s_neutral", "positive"],
-    "politeness": ["politeness"],
-    "social_dimensions": [
-        "social_support",
-        "similarity",
-        "romance",
-        "respect",
-        "power",
-        "knowledge",
-        "identity",
-        "fun",
-        "conflict",
-        "trust",
-    ],
-}
+
+def get_persona_convo(string_convo, wc=False):
+    if wc:
+        return string_convo
+    string_convo = (
+        string_convo.strip()
+        .replace("\n", " ")
+        .replace('12"x12"', "12x12 inches")
+        .replace("\u00d7", "x")
+        .replace('1/2"', "1/2 inch")
+        .replace('1"x2"', "1x2 inches")
+        .replace('3/4"', "3/4 inch")
+        .replace('24"x8"', "24 x 8 inches")
+        .replace('4"', "4 inch")
+        .replace('12" x 8"', "12 x 8 inches")
+        .replace('"assistant":', '"assistant",')
+        .replace("\u2013", "-")
+        .replace("\u2014", "-")
+        .replace("\u2019", "'")
+        .replace('outcome‑focused): \\"I', "outcome‑focused): 'I")
+        .replace('design.\\" \\n\\nE', "design.' \\n\\nE")
+        .replace('skills): \\"I', "skills): 'I")
+        .replace('experience.\\" \\n\\nE', "experience.' \\n\\nE")
+        .replace('confident): \\"I combine', "confident): 'I combine")
+        .replace('projects.\\" \\n\\nOne', "projects.' \\n\\nOne")
+        .replace('tagline: \\"Artist', "tagline: 'Artist")
+        .replace(
+            'experiences.\\" \\n\\nLinkedIn',
+            "experiences.' \\n\\nLinkedIn",
+        )
+        .replace('paragraphs): \\"I', "paragraphs): 'I")
+        .replace('tech." \\n\\nDelivery', "tech.' \\n\\nDelivery")
+        .replace('more." This', "more.” This")
+        .split("  // Note:")[0]
+    )
+    if string_convo[-4:] == "]} ]":
+        string_convo = string_convo[:-4] + "}]"
+    elif string_convo[-4:] == "   ]":
+        string_convo = string_convo[:-4] + "}]"
+    if string_convo[-3:] != '"}]':
+        if string_convo[-1] == ".":
+            string_convo += '"}]'
+        elif string_convo[-3:] == '"]}':
+            string_convo = string_convo[:-3] + '"}]'
+        elif string_convo[-3:] == "} ]":
+            string_convo = string_convo[:-3] + "}]"
+        elif string_convo[-3:] == "]}]":
+            string_convo = string_convo[:-3] + "}]"
+        elif string_convo[-3:] == "}]}":
+            string_convo = string_convo[:-3] + "}]"
+        elif string_convo[-3:] == "}}]":
+            string_convo = string_convo[:-3] + "}]"
+        if string_convo[-3:] == ".}]":
+            string_convo = string_convo[:-3] + '."}]'
+        elif string_convo[-3:] == ".]}":
+            string_convo = string_convo[:-3] + '."}]'
+    persona_convo = eval(string_convo)
+    mod = 0
+    for t in range(len(persona_convo)):
+        if (
+            len(persona_convo) > 2
+            and persona_convo[t - mod]["role"] == "assistant"
+            and persona_convo[t - 1 - mod]["role"] == "assistant"
+        ):
+            persona_convo[t - 1 - mod]["content"] = (
+                persona_convo[t - 1 - mod]["content"]
+                + " "
+                + persona_convo[t - mod]["content"]
+            )
+            del persona_convo[t - mod]
+            mod += 1
+    return persona_convo
 
 
 def extract_demographics(df):

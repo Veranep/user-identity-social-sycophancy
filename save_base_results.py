@@ -52,9 +52,6 @@ persona_data["persona_text"].append("[]")
 
 df_persona = pd.DataFrame(persona_data)
 df_persona.to_pickle("data/base_data_persona.gz")
-df_persona_turns = pd.DataFrame(persona_data_turns)
-df_persona_turns.to_pickle("data/base_data_persona_turns.gz")
-
 
 for i in tqdm(range(len(df))):
     for prompt_type in ["original_post", "flipped_story"]:

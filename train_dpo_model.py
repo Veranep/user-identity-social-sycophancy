@@ -9,16 +9,6 @@ torch.backends.cuda.enable_cudnn_sdp(False)
 
 from trl import DPOTrainer, DPOConfig
 
-# from peft import LoraConfig
-
-# peft_config = LoraConfig(
-#     r=16,
-#     lora_alpha=32,
-#     lora_dropout=0.05,
-#     target_modules="all-linear",
-#     task_type="CAUSAL_LM",
-# )
-
 
 def preprocess_function(example):
     return {
@@ -76,7 +66,6 @@ if __name__ == "__main__":
         model=args.model,
         train_dataset=ds,
         args=config,
-        # peft_config=peft_config,
     )
     trainer.train()
     trainer.save_model(f"results/dpo_model_{args.model.split('/')[-1]}")
