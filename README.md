@@ -1,5 +1,5 @@
-# Should I Follow My Heart or Focus on My Career?: Identity Disclosure Shapes Sycophancy in LLM Personal Advice
-This is the repository for **Should I Follow My Heart or Focus on My Career?: Identity Disclosure Shapes Sycophancy in LLM Personal Advice**.
+# “Should I Follow My Heart or Focus on My Career?”: Identity Disclosure Shapes Sycophancy in LLM Personal Advice
+This is the repository for **“Should I Follow My Heart or Focus on My Career?”: Identity Disclosure Shapes Sycophancy in LLM Personal Advice**.
 
 ![Introduction](figure.png)
 
