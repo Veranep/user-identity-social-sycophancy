@@ -1,11 +1,11 @@
-# Identity Disclosure Shapes Sycophancy in LLM Personal Advice
-This is the repository for **Identity Disclosure Shapes Sycophancy in LLM Personal Advice**.
+# “Should I Follow My Heart or Focus on My Career?”: Identity Disclosure Shapes Sycophancy in LLM Personal Advice
+This is the repository for **“Should I Follow My Heart or Focus on My Career?”: Identity Disclosure Shapes Sycophancy in LLM Personal Advice**.
 
 ![Introduction](figure.png)
 
 ## Paper abstract
 LLMs increasingly offer personal advice, yet they tend to excessively favor the user's perspective.
-Prior work has provided early evidence that demographic and personality information about the advice seeker is linked to differences in sycophancy, but it remains unclear how other aspects of a person's multifaceted identity such as their self-conceptions or their life experiences, naturally disclosed through conversation, shape sycophancy.
+Prior work has provided early evidence that demographic and personality information about the advice seeker is linked to differences in such sycophantic behavior, but it remains unclear how other aspects of a person's multifaceted identity such as their self-conceptions or their life experiences, naturally disclosed through conversation, shape sycophancy.
 To address this gap, we investigate how identity disclosures by the user influence sycophancy in LLM-generated advice, including whether this differs depending on the user and the aspect of their identity that they disclose.
 Our results across controlled synthetic and real-world conversations show that identity disclosures involving feelings elicit more sycophantic responses than career-related disclosures, especially when they come from vulnerable users.
 Furthermore, we compare prompting and direct preference optimization (DPO) as sycophancy mitigation techniques to evaluate effectiveness across identities. We find that DPO reduces overall sycophancy most effectively, but mitigation shows substantial disparities between identities, highlighting the importance of evaluating and designing mitigation techniques that are effective across users and in conversational context.
