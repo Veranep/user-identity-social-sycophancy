@@ -198,6 +198,22 @@ if __name__ == "__main__":
                     },
                 }
             )
+        elif args.generate:
+            final_convos_constrained.append(
+                tokenizer.apply_chat_template(
+                    persona_convo
+                    + [
+                        {
+                            "role": "user",
+                            "content": df_data.iloc[i]["prompt_text"]
+                            + "\nOutput only 'Yes' if I am wrong or 'No' if I am right.",
+                        }
+                    ],
+                    tokenize=False,
+                    add_generation_prompt=True,
+                    enable_thinking=False,
+                )
+            )
         else:
             final_convos_constrained.append(
                 tokenizer.apply_chat_template(
