@@ -52,11 +52,15 @@ if __name__ == "__main__":
         default="",
         help="Huggingface token that grants access to Llama model",
     )
-
     parser.add_argument(
         "--mitigate",
         action="store_true",
         help="Whether to include an in-context sycophancy mitigation prompt",
+    )
+    parser.add_argument(
+        "--generate",
+        action="store_true",
+        help="Whether to store output generations rather than token probabilities",
     )
     args = parser.parse_args()
     if args.token:
@@ -342,37 +346,64 @@ if __name__ == "__main__":
         )
 
     elif "model_answer_constrained" not in df_data:
-        if not tokenizer.pad_token_id:
-            tokenizer.pad_token_id = tokenizer.eos_token_id
-        tokens_of_interest_yes = ["Yes", " Yes", "yes", " yes"]
-        token_ids_yes = [
-            tokenizer.encode(t, add_special_tokens=False)[0]
-            for t in tokens_of_interest_yes
-        ]
-        tokens_of_interest_no = ["No", " No", "no", " no"]
-        token_ids_no = [
-            tokenizer.encode(t, add_special_tokens=False)[0]
-            for t in tokens_of_interest_no
-        ]
-        yes = []
-        no = []
-        for convo in tqdm(final_convos_constrained):
-            logits = model.generate(
-                **convo.to(device),
-                max_new_tokens=1,
-                output_logits=True,
-                return_dict_in_generate=True,
-            )["logits"][0][0]
-            log_probs = F.log_softmax(logits, dim=-1)
-            yes.append(
-                torch.max(log_probs[token_ids_yes]).cpu().numpy().item()
+        if args.generate:
+            model = pipeline(
+                "text-generation",
+                model=model,
+                tokenizer=tokenizer,
+                torch_dtype=torch.bfloat16,
+                device_map="auto",
             )
-            no.append(torch.max(log_probs[token_ids_no]).cpu().numpy().item())
+            if not model.tokenizer.pad_token_id:
+                model.tokenizer.pad_token_id = model.tokenizer.eos_token_id
+            df_data["model_answer"] = [
+                answer[0]["generated_text"]
+                for answer in tqdm(
+                    model(
+                        ListDataset(final_convos),
+                        batch_size=32,
+                        do_sample=False,
+                        return_full_text=False,
+                        max_new_tokens=1,
+                    ),
+                    total=len(final_convos_constrained),
+                )
+            ]
 
-        df_data["model_answer_constrained_yes"] = yes
-        df_data["model_answer_constrained_no"] = no
+        else:
+            if not tokenizer.pad_token_id:
+                tokenizer.pad_token_id = tokenizer.eos_token_id
+            tokens_of_interest_yes = ["Yes", " Yes", "yes", " yes"]
+            token_ids_yes = [
+                tokenizer.encode(t, add_special_tokens=False)[0]
+                for t in tokens_of_interest_yes
+            ]
+            tokens_of_interest_no = ["No", " No", "no", " no"]
+            token_ids_no = [
+                tokenizer.encode(t, add_special_tokens=False)[0]
+                for t in tokens_of_interest_no
+            ]
+            yes = []
+            no = []
+            for convo in tqdm(final_convos_constrained):
+                logits = model.generate(
+                    **convo.to(device),
+                    max_new_tokens=1,
+                    output_logits=True,
+                    return_dict_in_generate=True,
+                )["logits"][0][0]
+                log_probs = F.log_softmax(logits, dim=-1)
+                yes.append(
+                    torch.max(log_probs[token_ids_yes]).cpu().numpy().item()
+                )
+                no.append(
+                    torch.max(log_probs[token_ids_no]).cpu().numpy().item()
+                )
+
+            df_data["model_answer_constrained_yes"] = yes
+            df_data["model_answer_constrained_no"] = no
 
         df_data = df_data.drop(columns=["persona_text", "prompt_text"])
         df_data.to_pickle(
-            f"results/{args.model.split('/')[-1]}_{args.persona_type}{'_mitigate' if args.mitigate else ''}_results.pkl"
+            f"results/{args.model.split('/')[-1]}_{args.persona_type}{'_mitigate' if args.mitigate else ''}{'_generate' if args.generate else ''}_results.pkl"
         )
