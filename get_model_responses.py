@@ -345,7 +345,7 @@ if __name__ == "__main__":
             f"results/{args.model.split('/')[-1]}_{args.persona_type}{'_mitigate' if args.mitigate else ''}_results.pkl"
         )
 
-    elif "model_answer_constrained" not in df_data:
+    elif not any(["model_answer_constrained" in c for c in df_data.columns]):
         if args.generate:
             model = pipeline(
                 "text-generation",
@@ -356,11 +356,11 @@ if __name__ == "__main__":
             )
             if not model.tokenizer.pad_token_id:
                 model.tokenizer.pad_token_id = model.tokenizer.eos_token_id
-            df_data["model_answer"] = [
+            df_data["model_answer_constrained"] = [
                 answer[0]["generated_text"]
                 for answer in tqdm(
                     model(
-                        ListDataset(final_convos),
+                        ListDataset(final_convos_constrained),
                         batch_size=32,
                         do_sample=False,
                         return_full_text=False,
